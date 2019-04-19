@@ -1,8 +1,12 @@
 import svgwrite
 from svgwrite import rgb
+from cairosvg import svg2png
+from PIL import Image
 from math import log, floor
 from collections import OrderedDict
 import warnings
+from io import BytesIO
+import cairosvg
 #from warnings import Warning
 
 
@@ -44,7 +48,7 @@ def smart_ticks(data, limits=None):
     # manual, verbose checking potential limits to see how many ticks we would get
     potential_ticks = [.1, .2, .25, .5, 1, 2, 25, 50, 100]
     num_ticks = [floor((div_limits[1]-div_limits[0])/pt) for pt in potential_ticks]
-    print('Numbers are: %s'%num_ticks)
+
 
     for i,num_tick in enumerate(num_ticks):
         # even though it says 3 to 6 allowed ticks, it's actually 4 to 7
@@ -74,13 +78,25 @@ def smart_ticks(data, limits=None):
 
 
 class Chart:
+    defaults = {
+        'dim': [300, 150],
+        'xlim': [],
+        'ylim': [],
+        'marker_shape': 'circle',
+        'marker_size': 10,
+        'pos': [0, 0]
+    }
+
     def __init__(self, data_name):
+
+        defaults = self.defaults
+        print(defaults)
         self.type = 'Chart'
         # chart properties
-        self.dim = []  # [x, y] pixel size of graph. Does not include axes. Border will be truncated
-        self.pos = []  # [x, y] pixels from top left corner
-        self.xlim = []  # [min, max] limits of our x data
-        self.ylim = []  # [min, max] limits of our y data
+        self.dim = defaults['dim']  # [x, y] pixel size of graph. Does not include axes. Border will be truncated
+        self.pos = defaults['pos']  # [x, y] pixels from top left corner
+        self.xlim = defaults['xlim']  # [min, max] limits of our x data
+        self.ylim = defaults['ylim']  # [min, max] limits of our y data
         #
         self.scale_to_inside_border = False
         self.inside_border_width = 1
@@ -90,17 +106,19 @@ class Chart:
         self.data_name = data_name  # the data we link our chart to
 
         # marker properties
-        self.size = 5  # size of the markers
-        self.fill_color = (50, 50, 200)  # color of the markers
-        self.stroke_color = (0, 0, 0)  # color of the marker border
-        self.stroke_width = 1  # thickness of the marker border
-        self.line = True  # whether or not the marker will have a border
+        self.marker_shape = defaults['marker_shape']
+        self.marker_size = defaults['marker_size']
+        self.marker_fill_color = (50, 50, 200)  # color of the markers
+        self.marker_border_color = (0, 0, 0)  # color of the marker border
+        self.marker_border_width = 1  # thickness of the marker border. 0 means no border
+
 
     def get_x_res(self):
         return (self.dim[0]-1) / (self.xlim[1] - self.xlim[0])
 
     def get_y_res(self):
         return (self.dim[1]-1) / (self.ylim[1] - self.ylim[0])
+
 
 
 class Scatter(Chart):
@@ -144,19 +162,51 @@ class Scatter(Chart):
         # multiplying it by the resolution to get it in pixels
         # y is plotted top to bottom, so same thing except we subtract the calculated value by the figure size
         # to get its proper position
+        # future support: square, asterisk, dash, plus, custom svg
+
         for x, y in zip(x_data, y_data):
+
             center = (((x - self.xlim[0]) * x_res),
                       (self.dim[1] - (y - self.ylim[0]) * y_res))
-            #print(*self.fill_color)
-            chart_area.add(
-                chart_area.circle(
-                    shape_rendering='crispEdges',
-                    center=(center),
-                    r=self.size,
-                    fill=rgb(self.fill_color[0], self.fill_color[1], self.fill_color[2]),
-                    stroke=rgb(self.stroke_color[0], self.stroke_color[1], self.stroke_color[2])
+
+            if self.marker_shape == 'circle':
+                chart_area.add(
+                    chart_area.circle(
+                        #shape_rendering='crispEdges',
+                        center=(center),
+                        r=self.marker_size/2,
+                        fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
+                        stroke=rgb(self.marker_border_color[0], self.marker_border_color[1], self.marker_border_color[2],),
+                        stroke_width=self.marker_border_width
+                    )
                 )
-            )
+            elif self.marker_shape == 'square':
+                chart_area.add(
+                    chart_area.rect(
+                        insert=(center[0] - self.marker_size/2, center[1] - self.marker_size/2),
+                        size=(self.marker_size, self.marker_size),
+                        fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
+                        stroke=rgb(self.marker_border_color[0], self.marker_border_color[1],
+                                   self.marker_border_color[2], ),
+                        stroke_width=self.marker_border_width
+                    )
+                )
+
+            elif self.marker_shape == 'rectangle' or self.marker_shape == 'rect':
+                chart_area.add(
+                    chart_area.rect(
+                        insert=(center[0] - self.marker_size/2, center[1] - self.marker_size/4),
+                        size=(self.marker_size, self.marker_size/2),
+                        fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
+                        stroke=rgb(self.marker_border_color[0], self.marker_border_color[1],
+                                   self.marker_border_color[2], ),
+                        stroke_width=self.marker_border_width
+                    )
+                )
+            elif self.marker_shape == '-' or self.marker_shape == 'dash':
+                pass
+            elif self.marker_shape == '*' or self.marker_shape == 'star':
+                pass
 
 
 
@@ -193,9 +243,9 @@ class Scatter(Chart):
                                          0
                                          ])
 
-                #print(border_strokes)
+
                 border_strokes.append('M')
-                #print(border_positions)
+                print(border_positions)
 
                 for stroke, border_position in zip(border_strokes, border_positions):
                     border_path += "%s %s %s" % (border_position[0], border_position[1], stroke)
@@ -204,12 +254,16 @@ class Scatter(Chart):
 
                 # print(border_path)
                 chart_area.add(chart_area.path(border_path,
+                                             shape_rendering='crispEdges',
                                              fill="none",
                                              stroke=self.inside_border_color,
-                                             shape_rendering='crispEdges',
                                              stroke_width=self.inside_border_width))
         subfigure.add(chart_area)
         return subfigure
+
+
+class Histogram(Chart):
+    pass
 
 
 class Axis:
@@ -230,7 +284,7 @@ class Axis:
         self.minor_tick_linewidth = 1
         self.minor_tick_color = rgb(0, 0, 0)
 
-        self.axis_linewidth = 0
+        self.axis_linewidth = 1
 
         self.tick_labels = []  # labels for our major ticks
         self.link_to = link_to
@@ -250,7 +304,7 @@ class YAxis(Axis):
 
 
     def get_y_res(self):
-        return (self.dim-1) / (self.lim[1] - self.lim[0])
+        return (self.dim - 1) / (self.lim[1] - self.lim[0])
 
     def draw(self, main_figure):
         # grab any linked plot values
@@ -270,6 +324,7 @@ class YAxis(Axis):
 
             if not self.dim:
                 self.dim = main_figure.drawables[self.link_to].dim[1]
+
             # print(self.data_name, self.pos, self.lim, self.dim)
 
         data = main_figure.data[self.data_name][1]
@@ -277,56 +332,74 @@ class YAxis(Axis):
         y_res = self.get_y_res()
         subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                            main_figure.dim[1]),
-                                     style="shape-rendering:crispEdges;text-anchor:end;font-size:%spx;font-style:arial;alignment-baseline:middle"%self.font_size)
+                                     style="text-anchor:end;font-size:%spx;font-style:arial;alignment-baseline:middle"%self.font_size)
 
+        # start the svg path for the major tick
         major_tick_path = "M"
+
         if self.side == 'left':
             border_path = "M %s %s L %s %s" % (
-            self.pos[0] - self.axis_offset, self.pos[1], self.pos[0] - self.axis_offset, self.pos[1] + self.dim)
-            subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color))
+                    self.pos[0] - self.axis_offset - self.axis_linewidth/2,
+                    self.pos[1],
+                    self.pos[0] - self.axis_offset - self.axis_linewidth/2,
+                    self.pos[1] + self.dim)
+            subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color, stroke_width=self.axis_linewidth,
+                                         shape_rendering='crispEdges'))
+
             for tick_value in tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     self.pos[0] - self.axis_offset,
                     self.pos[1] + self.dim - y_res * tick_value,
-                    self.pos[0] - self.major_tick_length-self.axis_offset,
+                    self.pos[0] - self.major_tick_length - self.axis_offset - self.axis_linewidth,
                     self.pos[1] + self.dim - y_res * tick_value)
             major_tick_path = major_tick_path[:-2]
-            print(major_tick_path)
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color))
+            print('Y border path: ', major_tick_path)
+            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,
+                                         stroke_width=self.major_tick_linewidth,
+                                         shape_rendering='crispEdges'))
 
             # label the ticks
             for tick_value in tick_values:
-                x = self.pos[0] - self.major_tick_length - self.text_offset_x - self.axis_offset
+                x = self.pos[0] - self.major_tick_length - self.text_offset_x - self.axis_offset - self.axis_linewidth
                 y = self.pos[1] + self.dim - y_res * tick_value + self.text_offset_y# + self.font_size/2.5
                 subfigure.add(subfigure.text('%s'%tick_value,
                                              insert=(x, y)),)
+
         if self.side == 'right':
             #print('drawing a right axis')
-            border_path = "M %s %s L %s %s" % (self.pos[0]+self.axis_offset + linked_chart.dim[0], self.pos[1], self.pos[0] + self.axis_offset+ linked_chart.dim[0], self.pos[1] + self.dim)
-            subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color))
+            border_path = "M %s %s L %s %s" % (
+                self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.axis_linewidth/2,
+                self.pos[1],
+                self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.axis_linewidth/2,
+                self.pos[1] + self.dim)
+            subfigure.add(subfigure.path(border_path, fill="none",
+                                         stroke=self.color,
+                                         stroke_width=self.axis_linewidth,
+                                         shape_rendering='crispEdges'))
             for tick_value in tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     self.pos[0] + self.axis_offset + linked_chart.dim[0],
                     self.pos[1] + self.dim - y_res * tick_value,
-                    self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.major_tick_length,
+                    self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.major_tick_length + self.axis_linewidth/2,
                     self.pos[1] + self.dim - y_res * tick_value)
-            #print(major_tick_path)
+
             major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color))
+            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,stroke_width=self.major_tick_linewidth,
+                                         shape_rendering='crispEdges'))
 
             # label the ticks
             for tick_value in tick_values:
-                x = self.pos[0] + self.major_tick_length + self.text_offset_x + self.axis_offset + linked_chart.dim[0]
+                x = self.pos[0] + self.major_tick_length + self.text_offset_x + self.axis_offset + \
+                    linked_chart.dim[0] + self.axis_linewidth
                 y = self.pos[1] + self.dim - y_res * tick_value + self.text_offset_y
                 subfigure.add(
-                    subfigure.text('%s'%tick_value,
+                    subfigure.text('%s' % tick_value,
                                    insert=(x, y),
                                    text_anchor="start"
                                    )
                 )
 
         return subfigure
-
 
     def set_defaults(self, data):
         pass
@@ -340,13 +413,14 @@ class XAxis(Axis):
         self.side = 'bottom'
 
     def get_x_res(self):
-        return (self.dim-1) / (self.lim[1] - self.lim[0])
+        return (self.dim - 1) / (self.lim[1] - self.lim[0])
 
 
     def draw(self, main_figure):
         # write a function to grabbed any linked plot values
         # if there is a linked_chart and the values are not defined,
         # grab its data, its position, its dimensions and its limits
+        chart_height = 0
         if self.link_to:
             #print('establishing defaults')
             if not self.data_name:
@@ -363,6 +437,8 @@ class XAxis(Axis):
             if not self.dim:
                 self.dim = main_figure.drawables[self.link_to].dim[0]
 
+            chart_height = main_figure.drawables[self.link_to].dim[1]
+
 
             #print(self.data_name, self.pos, self.lim, self.dim)
 
@@ -370,33 +446,92 @@ class XAxis(Axis):
         tick_values = smart_ticks(data, self.lim)
         x_res = self.get_x_res()
 
-
+        """
         subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                            main_figure.dim[1]),
-                                     style="shape-rendering:crispEdges;text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top"%self.font_size)
-
+                                     style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top"%self.font_size)
+        """
         # draw the main axis. Might simply overlap with the figure border
-        border_path = "M %s %s L %s %s"%(self.pos[0], self.pos[1]+self.axis_offset, self.pos[0]+self.dim, self.pos[1]+self.axis_offset)
-        subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color))
+        if self.side =='top':
+            subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
+                                               main_figure.dim[1]),
+                                         style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:bottom" % self.font_size)
+            border_path = "M %s %s L %s %s"%(self.pos[0],
+                                             self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth/2,
+                                             self.pos[0] + self.dim,
+                                             self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth/2)
 
-        # draw the ticks
-        major_tick_path = "M"
-        for tick_value in tick_values:
-            major_tick_path += " %s %s L %s %s M"%(
-                self.pos[0] + x_res * tick_value + 1,
-                self.pos[1] + self.axis_offset,
-                self.pos[0] + x_res * tick_value + 1,
-                self.pos[1] + self.major_tick_length +self.axis_offset)
-        print(major_tick_path)
-        major_tick_path = major_tick_path[:-2]
-        subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color))
+            subfigure.add(subfigure.path(border_path,
+                                         fill="none",
+                                         stroke=self.color,
+                                         stroke_width=self.axis_linewidth,
+                                         shape_rendering='crispEdges'))
 
-        # label the ticks
-        for tick_value in tick_values:
-            x = self.pos[0] + x_res * tick_value + self.text_offset_x
-            y = self.pos[1] + self.major_tick_length + self.axis_offset + self.text_offset_y  # + self.font_size/2.5
-            subfigure.add(subfigure.text('%s' % tick_value,
-                                         insert=(x, y)), )
+            # draw the ticks
+            major_tick_path = "M"
+            for tick_value in tick_values:
+                major_tick_path += " %s %s L %s %s M"%(
+                    round(self.pos[0] + x_res * tick_value + 1),
+                    round(self.pos[1] - chart_height - self.axis_offset),# + self.axis_linewidth/2,
+                    round(self.pos[0] + x_res * tick_value + 1),
+                    round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.axis_linewidth))
+
+            major_tick_path = major_tick_path[:-2]
+            print('major tick path:', major_tick_path)
+            subfigure.add(subfigure.path(major_tick_path,
+                                         fill="none",
+                                         stroke=self.color,
+                                         stroke_width=self.major_tick_linewidth,
+                                         shape_rendering='crispEdges'))
+
+            # label the ticks
+
+
+            for tick_value in tick_values:
+                x = round(self.pos[0] + x_res * tick_value + self.text_offset_x),
+                y = round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.text_offset_y - self.axis_linewidth) # + self.font_size/2.5
+                subfigure.add(subfigure.text('%s' % tick_value,
+                                             insert=(x, y)), )
+
+        if self.side =='bottom':
+            subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
+                                               main_figure.dim[1]),
+                                         style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top" % self.font_size)
+
+            border_path = "M %s %s L %s %s"%(self.pos[0],
+                                             self.pos[1] + self.axis_offset + self.axis_linewidth/2,
+                                             self.pos[0] + self.dim,
+                                             self.pos[1] + self.axis_offset + self.axis_linewidth/2)
+
+            subfigure.add(subfigure.path(border_path,
+                                         fill="none",
+                                         stroke=self.color,
+                                         stroke_width=self.axis_linewidth,
+                                         shape_rendering='crispEdges'))
+
+            # draw the ticks
+            major_tick_path = "M"
+            for tick_value in tick_values:
+                major_tick_path += " %s %s L %s %s M"%(
+                    self.pos[0] + x_res * tick_value + 1,
+                    self.pos[1] + self.axis_offset,# + self.axis_linewidth/2,
+                    self.pos[0] + x_res * tick_value + 1,
+                    self.pos[1] + self.major_tick_length + self.axis_offset + self.axis_linewidth)
+
+            major_tick_path = major_tick_path[:-2]
+
+            subfigure.add(subfigure.path(major_tick_path,
+                                         fill="none",
+                                         stroke=self.color,
+                                         stroke_width=self.major_tick_linewidth,
+                                         shape_rendering='crispEdges'))
+
+            # label the ticks
+            for tick_value in tick_values:
+                x = self.pos[0] + x_res * tick_value + self.text_offset_x
+                y = self.pos[1] + self.major_tick_length + self.axis_offset + self.text_offset_y + self.axis_linewidth # + self.font_size/2.5
+                subfigure.add(subfigure.text('%s' % tick_value,
+                                             insert=(x, y)), )
 
         return subfigure
 
@@ -407,6 +542,7 @@ class Plotxel:
         self.data = {}  # dictionary to store all data values. will be referenced by data name
         self.drawables = OrderedDict()  # keep track of the drawable items (charts, axes) in the figure. each drawable has a name
         self.background_color = rgb(255, 255, 255)
+        self.anti_aliasing = True
 
     def add_data(self, name, x, y):
         self.data[name] = [x, y]  # add some data. Drawables are linked to the data
@@ -432,10 +568,20 @@ class Plotxel:
         else:
             warnings.warn("Could not create a drawable of '%s'. Acceptable inputs are 'Scatter', 'YAxis', 'XAxis', 'YHist', and 'XHist'"%drawable_type, Warning)
 
+        return self.drawables[drawable_name]
 
     def draw(self):
-        svg_html = svgwrite.Drawing(size=(self.dim[0], self.dim[1]))
-        svg_html.add(svg_html.rect(size=(self.dim[0], self.dim[1]), fill=self.background_color))
+        """
+        Converts the object to SVG HTML
+        :return:
+        """
+        if self.anti_aliasing:
+            svg_html = svgwrite.Drawing(size=(self.dim[0], self.dim[1]))
+        else:
+            svg_html = svgwrite.Drawing(size=(self.dim[0], self.dim[1]), shape_rendering='crispEdges')
+
+        #svg_html = svgwrite.Drawing(size=(self.dim[0], self.dim[1]), shape_rendering='crispEdges')
+        svg_html.add(svg_html.rect(size=(self.dim[0], self.dim[1]), fill=self.background_color, ))
         for figure_object_key in self.drawables:
 
             figure_object = self.drawables[figure_object_key]
@@ -453,3 +599,27 @@ class Plotxel:
         svg_html = svg_html.replace('><', '><')
 
         return svg_html
+
+    def render(self, filename=None):
+        """
+        converts the svg to either a png file or a BytesIO object
+        :param filename: str -- option filename
+        :return:
+        """
+        if filename:
+            svg2png(bytestring=self.draw(), write_to='image.png')
+            return filename
+        mem_file = BytesIO()
+        svg2png(self.draw(), write_to=mem_file)
+        return mem_file
+
+    def show(self):
+        """
+        Shows the image in whatever viewing software you have
+        :return: None
+        """
+        image = Image.open(self.render())
+        image.show()
+
+
+
