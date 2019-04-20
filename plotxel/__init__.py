@@ -84,7 +84,14 @@ class Chart:
         'ylim': [],
         'marker_shape': 'circle',
         'marker_size': 10,
-        'pos': [0, 0]
+        'pos': [0, 0],
+        'inside_border_width': 1,
+        'inside_border': [[1], [1], [1], [1]],
+        'inside_border_color': 'black',
+        'title': 'Title',
+        'title_offset': 10,
+        'title_font': 'arial',
+        'title_font_size': 20
     }
 
     def __init__(self, data_name):
@@ -97,13 +104,17 @@ class Chart:
         self.pos = defaults['pos']  # [x, y] pixels from top left corner
         self.xlim = defaults['xlim']  # [min, max] limits of our x data
         self.ylim = defaults['ylim']  # [min, max] limits of our y data
-        #
-        self.scale_to_inside_border = False
-        self.inside_border_width = 1
-        self.inside_border = [[1], [1], [1], [1]]  # top, right, bottom, left widths for the border
-        self.inside_border_color = 'black'  # border color
+
+        self.inside_border_width = defaults['inside_border_width']
+        self.inside_border = defaults['inside_border']  # top, right, bottom, left widths for the border
+        self.inside_border_color = defaults['inside_border_color']  # border color
 
         self.data_name = data_name  # the data we link our chart to
+
+        self.title = defaults['title']
+        self.title_font = defaults['title_font']
+        self.title_offset = defaults['title_offset']
+        self.title_font_size = defaults['title_font_size']
 
         # marker properties
         self.marker_shape = defaults['marker_shape']
@@ -119,6 +130,9 @@ class Chart:
     def get_y_res(self):
         return (self.dim[1]-1) / (self.ylim[1] - self.ylim[0])
 
+    def setattrs(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 class Scatter(Chart):
@@ -208,57 +222,60 @@ class Scatter(Chart):
             elif self.marker_shape == '*' or self.marker_shape == 'star':
                 pass
 
-
-
-
         # inside of our chart area we will add a border.
-        if self.inside_border:
-            if type(self.inside_border) == list:
-                border_path = 'M '
-                border_strokes = []
-                for border_instruction in self.inside_border:
-                    if border_instruction[0] == 1:
-                        border_strokes.append('L')
-                    else:
-                        border_strokes.append('M')
-                border_positions = []
+        if self.inside_border is not None and (type(self.inside_border) == list or type(self.inside_border) == set):
+            border_path = 'M '
+            border_strokes = []
+            for border_instruction in self.inside_border:
+                if border_instruction[0] == 1 or border_instruction[0] == True:
+                    border_strokes.append('L')
+                else:
+                    border_strokes.append('M')
+            border_positions = []
 
-                border_positions.append([0,
-                                         int(self.inside_border_width/2) + self.inside_border_width % 2,
-                                         ])
+            border_positions.append([0,
+                                     int(self.inside_border_width/2) + self.inside_border_width % 2,
+                                     ])
 
-                border_positions.append([self.dim[0] - int(self.inside_border_width / 2),# + self.inside_border_width%2-1,
-                                         int(self.inside_border_width / 2) + self.inside_border_width % 2,
-                                         ])
+            border_positions.append([self.dim[0] - int(self.inside_border_width / 2),# + self.inside_border_width%2-1,
+                                     int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                                     ])
 
-                border_positions.append([self.dim[0] - int(self.inside_border_width / 2),# + self.inside_border_width % 2-1,
-                                         self.dim[1] - int(self.inside_border_width / 2)# + self.inside_border_width % 2-1
-                                         ])
+            border_positions.append([self.dim[0] - int(self.inside_border_width / 2),# + self.inside_border_width % 2-1,
+                                     self.dim[1] - int(self.inside_border_width / 2)# + self.inside_border_width % 2-1
+                                     ])
 
-                border_positions.append([int(self.inside_border_width/2) + self.inside_border_width % 2,
-                                         self.dim[1] - int(self.inside_border_width / 2)# + self.inside_border_width % 2-1
-                                         ])
+            border_positions.append([int(self.inside_border_width/2) + self.inside_border_width % 2,
+                                     self.dim[1] - int(self.inside_border_width / 2)# + self.inside_border_width % 2-1
+                                     ])
 
-                border_positions.append([int(self.inside_border_width/2) + self.inside_border_width % 2,
-                                         0
-                                         ])
+            border_positions.append([int(self.inside_border_width/2) + self.inside_border_width % 2,
+                                     0
+                                     ])
 
 
-                border_strokes.append('M')
-                print(border_positions)
+            border_strokes.append('M')
 
-                for stroke, border_position in zip(border_strokes, border_positions):
-                    border_path += "%s %s %s" % (border_position[0], border_position[1], stroke)
+            for stroke, border_position in zip(border_strokes, border_positions):
+                border_path += "%s %s %s" % (border_position[0], border_position[1], stroke)
 
-                border_path += "%s %s" % (border_positions[0][0], border_positions[0][1])
+            border_path += "%s %s" % (border_positions[0][0], border_positions[0][1])
 
-                # print(border_path)
-                chart_area.add(chart_area.path(border_path,
-                                             shape_rendering='crispEdges',
-                                             fill="none",
-                                             stroke=self.inside_border_color,
-                                             stroke_width=self.inside_border_width))
+            chart_area.add(chart_area.path(border_path,
+                                         shape_rendering='crispEdges',
+                                         fill="none",
+                                         stroke=self.inside_border_color,
+                                         stroke_width=self.inside_border_width))
+
+
         subfigure.add(chart_area)
+
+        subfigure.add(subfigure.text('%s' % self.title,
+                                     insert=(
+                                         round(self.pos[0] + (self.dim[0] - 1) / 2),
+                                         round(self.pos[1] - self.title_offset)
+                                     ),
+                                     style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom"%(self.title_font_size, self.title_font)), )
         return subfigure
 
 
@@ -276,10 +293,17 @@ class Axis:
         self.lim = []  # [min, max] limits of our axis
         self.color = rgb(0, 0, 0)  # color of our axis line
 
+        self.axis_label = 'Axis'
+        self.axis_label_font_size = 10
+        self.axis_label_offset = 10
+
+
+        self.major_tick_values = None
         self.major_tick_linewidth = 1
         self.major_tick_length = 5
         self.major_tick_color = rgb(0, 0, 0)
         self.major_ticks = []
+        self.major_tick_font = 'arial'
 
         self.minor_tick_linewidth = 1
         self.minor_tick_color = rgb(0, 0, 0)
@@ -316,6 +340,7 @@ class YAxis(Axis):
             if not self.data_name:
                 self.data_name = main_figure.drawables[self.link_to].data_name
 
+
             if not self.pos:
                 self.pos = main_figure.drawables[self.link_to].pos
 
@@ -328,7 +353,10 @@ class YAxis(Axis):
             # print(self.data_name, self.pos, self.lim, self.dim)
 
         data = main_figure.data[self.data_name][1]
-        tick_values = smart_ticks(data, self.lim)
+        if not self.major_tick_values:
+            major_tick_values = smart_ticks(data, self.lim)
+
+
         y_res = self.get_y_res()
         subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                            main_figure.dim[1]),
@@ -346,27 +374,25 @@ class YAxis(Axis):
             subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color, stroke_width=self.axis_linewidth,
                                          shape_rendering='crispEdges'))
 
-            for tick_value in tick_values:
+            for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     self.pos[0] - self.axis_offset,
-                    self.pos[1] + self.dim - y_res * tick_value,
+                    self.pos[1] + self.dim - y_res * major_tick_value,
                     self.pos[0] - self.major_tick_length - self.axis_offset - self.axis_linewidth,
-                    self.pos[1] + self.dim - y_res * tick_value)
+                    self.pos[1] + self.dim - y_res * major_tick_value)
             major_tick_path = major_tick_path[:-2]
-            print('Y border path: ', major_tick_path)
             subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,
                                          stroke_width=self.major_tick_linewidth,
                                          shape_rendering='crispEdges'))
 
             # label the ticks
-            for tick_value in tick_values:
+            for major_tick_value in major_tick_values:
                 x = self.pos[0] - self.major_tick_length - self.text_offset_x - self.axis_offset - self.axis_linewidth
-                y = self.pos[1] + self.dim - y_res * tick_value + self.text_offset_y# + self.font_size/2.5
-                subfigure.add(subfigure.text('%s'%tick_value,
+                y = self.pos[1] + self.dim - y_res * major_tick_value + self.text_offset_y# + self.font_size/2.5
+                subfigure.add(subfigure.text('%s'%major_tick_value,
                                              insert=(x, y)),)
 
         if self.side == 'right':
-            #print('drawing a right axis')
             border_path = "M %s %s L %s %s" % (
                 self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.axis_linewidth/2,
                 self.pos[1],
@@ -376,24 +402,24 @@ class YAxis(Axis):
                                          stroke=self.color,
                                          stroke_width=self.axis_linewidth,
                                          shape_rendering='crispEdges'))
-            for tick_value in tick_values:
+            for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     self.pos[0] + self.axis_offset + linked_chart.dim[0],
-                    self.pos[1] + self.dim - y_res * tick_value,
+                    self.pos[1] + self.dim - y_res * major_tick_value,
                     self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.major_tick_length + self.axis_linewidth/2,
-                    self.pos[1] + self.dim - y_res * tick_value)
+                    self.pos[1] + self.dim - y_res * major_tick_value)
 
             major_tick_path = major_tick_path[:-2]
             subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,stroke_width=self.major_tick_linewidth,
                                          shape_rendering='crispEdges'))
 
             # label the ticks
-            for tick_value in tick_values:
+            for major_tick_value in major_tick_values:
                 x = self.pos[0] + self.major_tick_length + self.text_offset_x + self.axis_offset + \
                     linked_chart.dim[0] + self.axis_linewidth
-                y = self.pos[1] + self.dim - y_res * tick_value + self.text_offset_y
+                y = self.pos[1] + self.dim - y_res * major_tick_value + self.text_offset_y
                 subfigure.add(
-                    subfigure.text('%s' % tick_value,
+                    subfigure.text('%s' % major_tick_value,
                                    insert=(x, y),
                                    text_anchor="start"
                                    )
@@ -422,7 +448,6 @@ class XAxis(Axis):
         # grab its data, its position, its dimensions and its limits
         chart_height = 0
         if self.link_to:
-            #print('establishing defaults')
             if not self.data_name:
                 self.data_name = main_figure.drawables[self.link_to].data_name
 
@@ -446,16 +471,11 @@ class XAxis(Axis):
         tick_values = smart_ticks(data, self.lim)
         x_res = self.get_x_res()
 
-        """
-        subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
-                                           main_figure.dim[1]),
-                                     style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top"%self.font_size)
-        """
         # draw the main axis. Might simply overlap with the figure border
-        if self.side =='top':
+        if self.side == 'top':
             subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                                main_figure.dim[1]),
-                                         style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:bottom" % self.font_size)
+                                         style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom" % (self.font_size, self.major_tick_font))
             border_path = "M %s %s L %s %s"%(self.pos[0],
                                              self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth/2,
                                              self.pos[0] + self.dim,
@@ -472,17 +492,21 @@ class XAxis(Axis):
             for tick_value in tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     round(self.pos[0] + x_res * tick_value + 1),
-                    round(self.pos[1] - chart_height - self.axis_offset),# + self.axis_linewidth/2,
+                    round(self.pos[1] - chart_height - self.axis_offset),
                     round(self.pos[0] + x_res * tick_value + 1),
                     round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.axis_linewidth))
 
             major_tick_path = major_tick_path[:-2]
-            print('major tick path:', major_tick_path)
+
+            # draw the axis label
+
+
             subfigure.add(subfigure.path(major_tick_path,
                                          fill="none",
                                          stroke=self.color,
                                          stroke_width=self.major_tick_linewidth,
                                          shape_rendering='crispEdges'))
+
 
             # label the ticks
 
@@ -492,6 +516,13 @@ class XAxis(Axis):
                 y = round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.text_offset_y - self.axis_linewidth) # + self.font_size/2.5
                 subfigure.add(subfigure.text('%s' % tick_value,
                                              insert=(x, y)), )
+
+            # and the label
+            subfigure.add(subfigure.text('%s' % self.axis_label,
+                                         insert=(
+                                             round(self.pos[0] + (self.dim-1)/2),
+                                             round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.text_offset_y - self.axis_linewidth - self.axis_label_offset)
+                                         )), )
 
         if self.side =='bottom':
             subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
@@ -532,6 +563,12 @@ class XAxis(Axis):
                 y = self.pos[1] + self.major_tick_length + self.axis_offset + self.text_offset_y + self.axis_linewidth # + self.font_size/2.5
                 subfigure.add(subfigure.text('%s' % tick_value,
                                              insert=(x, y)), )
+
+            subfigure.add(subfigure.text('%s' % self.axis_label,
+                                         insert=(
+                                             round(self.pos[0] + (self.dim-1)/2),
+                                             round(self.pos[1] + self.major_tick_length + self.axis_offset + self.text_offset_y + self.axis_linewidth + self.axis_label_offset)
+                                         )), )
 
         return subfigure
 
@@ -609,6 +646,7 @@ class Plotxel:
         if filename:
             svg2png(bytestring=self.draw(), write_to='image.png')
             return filename
+        print(self.draw())
         mem_file = BytesIO()
         svg2png(self.draw(), write_to=mem_file)
         return mem_file
@@ -620,6 +658,7 @@ class Plotxel:
         """
         image = Image.open(self.render())
         image.show()
+
 
 
 
