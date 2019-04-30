@@ -318,6 +318,10 @@ class Axis:
         # Reverses if top/bottom or right/left axis
         self.font_size = 10  # font size of the axis labels
 
+    def setattrs(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
 
 class YAxis(Axis):
     def __init__(self, data_name=None, link_to=None):
@@ -644,7 +648,11 @@ class Plotxel:
         :return:
         """
         if filename:
-            svg2png(bytestring=self.draw(), write_to='image.png')
+            if filename[-4:] == '.png':
+                pass
+            else:
+                filename += '.png'
+            svg2png(bytestring=self.draw(), write_to=filename)
             return filename
         print(self.draw())
         mem_file = BytesIO()
