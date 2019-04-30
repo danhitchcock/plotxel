@@ -60,7 +60,7 @@ It's wordy, slow, and unnecessary 99% of the time. But that 1%, you'll be glad y
     # x.render(filename=None)
     
 
-[Example1 Image](https://github.com/danhitchcock/plotxel/wiki/example1.png)
+![Example1 Image](https://github.com/danhitchcock/plotxel/wiki/example1.png)
     
 This program is being developed based on my own needs, and unfortunately I don't do a lot of plotting today, therefore I don't need a lot of features.
 
