@@ -2,7 +2,7 @@ import svgwrite
 from svgwrite import rgb
 from cairosvg import svg2png
 from PIL import Image
-from math import log, floor
+from math import log, floor, ceil
 from collections import OrderedDict
 import warnings
 from io import BytesIO
@@ -50,18 +50,30 @@ def smart_ticks(data, limits=None):
     num_ticks = [floor((div_limits[1]-div_limits[0])/pt) for pt in potential_ticks]
 
 
-    for i,num_tick in enumerate(num_ticks):
-        # even though it says 3 to 6 allowed ticks, it's actually 4 to 7
-        if (num_tick >= 3) & (num_tick <= 6):
+    for i, num_tick in enumerate(num_ticks):
+        # even though it says 3 to 5 allowed ticks, it could actually be actually 4 to 8
+        if (num_tick >= 4) & (num_tick <= 6):
             tick = potential_ticks[i]
             break
 
     # print("Tick value: %s %s times"%(tick*10**magnitudes, num_tick))
     # next, find the minimum tick value that matches out convention of allowable tick numbers
     tick = tick*10**magnitudes
-    # subtract the remainder to the minimum, and we have our first tick
-    first_tick = limits[0] - limits[0]%tick
 
+    # check if our limit falls directly on the first tick. This would give a float rounding error
+    # if the difference between the tick and modulo is 3 orders of magnitude smaller than we expect, it's a rounding error
+
+    if log(tick - limits[0] % tick, 10) < (magnitudes-3):
+        print('tick falls on limit')
+        first_tick = limits[0]
+
+    else:
+        first_tick = limits[0] - limits[0] % tick
+    if first_tick < limits[0]:
+        print('first tick is below the limit. adjusting.')
+        first_tick += tick
+
+    print('first tick is as such: ', limits, first_tick)
     #propogate our ticks from there
     ticks = [first_tick]
     max_tick = first_tick
@@ -73,7 +85,7 @@ def smart_ticks(data, limits=None):
             break
         else:
             ticks.append(max_tick)
-    #print(ticks)
+    print(ticks)
     return ticks
 
 
