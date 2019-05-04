@@ -57,7 +57,7 @@ x.show()
 # or for SVG
 # svg_html = x.draw()
 
-# or for image in BytesIO / save to filename
+# or for image  in BytesIO / save to filename
 # x.render(filename='example1.png')
 
 #x.anti_aliasing=False
