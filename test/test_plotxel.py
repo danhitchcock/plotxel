@@ -34,9 +34,6 @@ class TestSmartTicks(unittest.TestCase):
         self.assertTrue(min(lengths) >= 4 and max(lengths) <= 8)
 
 
-
-
-
 #class TestSmartLimits(unittest.TestCase):
 #    def test_negative(self):
 #        self.assertEqual(4, 4)

@@ -64,16 +64,15 @@ def smart_ticks(data, limits=None):
     # if the difference between the tick and modulo is 3 orders of magnitude smaller than we expect, it's a rounding error
 
     if log(tick - limits[0] % tick, 10) < (magnitudes-3):
-        print('tick falls on limit')
         first_tick = limits[0]
 
     else:
         first_tick = limits[0] - limits[0] % tick
     if first_tick < limits[0]:
-        print('first tick is below the limit. adjusting.')
+
         first_tick += tick
 
-    print('first tick is as such: ', limits, first_tick)
+    #print('first tick is as such: ', limits, first_tick)
     #propogate our ticks from there
     ticks = [first_tick]
     max_tick = first_tick
@@ -85,7 +84,7 @@ def smart_ticks(data, limits=None):
             break
         else:
             ticks.append(max_tick)
-    print(ticks)
+    #print(ticks)
     return ticks
 
 
@@ -103,13 +102,15 @@ class Chart:
         'title': 'Title',
         'title_offset': 10,
         'title_font': 'arial',
-        'title_font_size': 20
+        'title_font_size': 20,
+        'line_width': 1,
+        'line_color': (0, 0, 0)
     }
 
     def __init__(self, data_name):
 
         defaults = self.defaults
-        print(defaults)
+        #print(defaults)
         self.type = 'Chart'
         # chart properties
         self.dim = defaults['dim']  # [x, y] pixel size of graph. Does not include axes. Border will be truncated
@@ -135,6 +136,10 @@ class Chart:
         self.marker_border_color = (0, 0, 0)  # color of the marker border
         self.marker_border_width = 1  # thickness of the marker border. 0 means no border
 
+        # line connector properties
+        self.line_width = defaults['line_width']
+        self.line_color = defaults['line_color']
+
 
     def get_x_res(self):
         return (self.dim[0]-1) / (self.xlim[1] - self.xlim[0])
@@ -146,10 +151,57 @@ class Chart:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def draw_border(self):
+        if self.inside_border is not None and (type(self.inside_border) == list or type(self.inside_border) == set):
+            border_path = 'M '
+            border_strokes = []
+            for border_instruction in self.inside_border:
+                if border_instruction[0] == 1 or border_instruction[0] == True:
+                    border_strokes.append('L')
+                else:
+                    border_strokes.append('M')
+            border_positions = []
+
+            border_positions.append([0,
+                                     int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                                     ])
+
+            border_positions.append(
+                [self.dim[0] - int(self.inside_border_width / 2),  # + self.inside_border_width%2-1,
+                 int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                 ])
+
+            border_positions.append(
+                [self.dim[0] - int(self.inside_border_width / 2),  # + self.inside_border_width % 2-1,
+                 self.dim[1] - int(self.inside_border_width / 2)  # + self.inside_border_width % 2-1
+                 ])
+
+            border_positions.append([int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                                     self.dim[1] - int(self.inside_border_width / 2)
+                                     # + self.inside_border_width % 2-1
+                                     ])
+
+            border_positions.append([int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                                     0
+                                     ])
+
+            border_strokes.append('M')
+
+            for stroke, border_position in zip(border_strokes, border_positions):
+                border_path += "%s %s %s" % (border_position[0], border_position[1], stroke)
+
+            border_path += "%s %s" % (border_positions[0][0], border_positions[0][1])
+
+        return svgwrite.path.Path(border_path,
+                               shape_rendering='crispEdges',
+                               fill="none",
+                               stroke=self.inside_border_color,
+                               stroke_width=self.inside_border_width)
+
 
 class Scatter(Chart):
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, data_name):
+        super().__init__(data_name)
         self.subtype = 'Scatter'
 
 
@@ -157,6 +209,7 @@ class Scatter(Chart):
         pass
 
     def draw(self, main_figure):
+
         x_data = main_figure.data[self.data_name][0]
         y_data = main_figure.data[self.data_name][1]
 
@@ -190,88 +243,113 @@ class Scatter(Chart):
         # to get its proper position
         # future support: square, asterisk, dash, plus, custom svg
 
+        data_coordinates = []
+
         for x, y in zip(x_data, y_data):
-
-            center = (((x - self.xlim[0]) * x_res),
-                      (self.dim[1] - (y - self.ylim[0]) * y_res))
-
-            if self.marker_shape == 'circle':
-                chart_area.add(
-                    chart_area.circle(
-                        #shape_rendering='crispEdges',
-                        center=(center),
-                        r=self.marker_size/2,
-                        fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
-                        stroke=rgb(self.marker_border_color[0], self.marker_border_color[1], self.marker_border_color[2],),
-                        stroke_width=self.marker_border_width
-                    )
+            # add coordinates
+            data_coordinates.append(
+                (
+                    ((x - self.xlim[0]) * x_res),
+                    (self.dim[1] - (y - self.ylim[0]) * y_res)
                 )
-            elif self.marker_shape == 'square':
-                chart_area.add(
-                    chart_area.rect(
-                        insert=(center[0] - self.marker_size/2, center[1] - self.marker_size/2),
-                        size=(self.marker_size, self.marker_size),
-                        fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
-                        stroke=rgb(self.marker_border_color[0], self.marker_border_color[1],
-                                   self.marker_border_color[2], ),
-                        stroke_width=self.marker_border_width
-                    )
-                )
+            )
 
-            elif self.marker_shape == 'rectangle' or self.marker_shape == 'rect':
-                chart_area.add(
-                    chart_area.rect(
-                        insert=(center[0] - self.marker_size/2, center[1] - self.marker_size/4),
-                        size=(self.marker_size, self.marker_size/2),
-                        fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
-                        stroke=rgb(self.marker_border_color[0], self.marker_border_color[1],
-                                   self.marker_border_color[2], ),
-                        stroke_width=self.marker_border_width
+        # draw a line, if present
+        if self.line_width > 0:
+            line_path = "M "
+            for center in data_coordinates:
+                line_path +="%s %s L "%(center[0], center[1])
+            line_path = line_path[:-2]
+            chart_area.add(
+                chart_area.path(line_path,
+                                shape_rendering='geometricPrecision',
+                                fill="none",
+                                stroke=rgb(self.line_color[0], self.line_color[1], self.line_color[2]),
+                                stroke_width=self.line_width))
+
+        # draw our makers
+        if self.marker_size > 0:
+
+            for center in data_coordinates:
+                if self.marker_shape == 'circle':
+                    chart_area.add(
+                        chart_area.circle(
+                            #shape_rendering='crispEdges',
+                            center=(center),
+                            r=self.marker_size/2,
+                            fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
+                            stroke=rgb(self.marker_border_color[0], self.marker_border_color[1], self.marker_border_color[2],),
+                            stroke_width=self.marker_border_width
+                        )
                     )
-                )
-            elif self.marker_shape == '-' or self.marker_shape == 'dash':
-                pass
-            elif self.marker_shape == '*' or self.marker_shape == 'star':
-                pass
+                elif self.marker_shape == 'square':
+                    chart_area.add(
+                        chart_area.rect(
+                            insert=(center[0] - self.marker_size/2, center[1] - self.marker_size/2),
+                            size=(self.marker_size, self.marker_size),
+                            fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
+                            stroke=rgb(self.marker_border_color[0], self.marker_border_color[1],
+                                       self.marker_border_color[2], ),
+                            stroke_width=self.marker_border_width
+                        )
+                    )
+
+                elif self.marker_shape == 'rectangle' or self.marker_shape == 'rect':
+                    chart_area.add(
+                        chart_area.rect(
+                            insert=(center[0] - self.marker_size/2, center[1] - self.marker_size/4),
+                            size=(self.marker_size, self.marker_size/2),
+                            fill=rgb(self.marker_fill_color[0], self.marker_fill_color[1], self.marker_fill_color[2]),
+                            stroke=rgb(self.marker_border_color[0], self.marker_border_color[1],
+                                       self.marker_border_color[2], ),
+                            stroke_width=self.marker_border_width
+                        )
+                    )
+                elif self.marker_shape == '-' or self.marker_shape == 'dash':
+                    pass
+                elif self.marker_shape == '*' or self.marker_shape == 'star':
+                    pass
 
         # inside of our chart area we will add a border.
-        if self.inside_border is not None and (type(self.inside_border) == list or type(self.inside_border) == set):
-            border_path = 'M '
-            border_strokes = []
-            for border_instruction in self.inside_border:
-                if border_instruction[0] == 1 or border_instruction[0] == True:
-                    border_strokes.append('L')
-                else:
-                    border_strokes.append('M')
-            border_positions = []
+            if self.inside_border is not None and (type(self.inside_border) == list or type(self.inside_border) == set):
+                border_path = 'M '
+                border_strokes = []
+                for border_instruction in self.inside_border:
+                    if border_instruction[0] == 1 or border_instruction[0] == True:
+                        border_strokes.append('L')
+                    else:
+                        border_strokes.append('M')
+                border_positions = []
 
-            border_positions.append([0,
-                                     int(self.inside_border_width/2) + self.inside_border_width % 2,
-                                     ])
+                border_positions.append([0,
+                                         int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                                         ])
 
-            border_positions.append([self.dim[0] - int(self.inside_border_width / 2),# + self.inside_border_width%2-1,
-                                     int(self.inside_border_width / 2) + self.inside_border_width % 2,
-                                     ])
+                border_positions.append(
+                    [self.dim[0] - int(self.inside_border_width / 2),  # + self.inside_border_width%2-1,
+                     int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                     ])
 
-            border_positions.append([self.dim[0] - int(self.inside_border_width / 2),# + self.inside_border_width % 2-1,
-                                     self.dim[1] - int(self.inside_border_width / 2)# + self.inside_border_width % 2-1
-                                     ])
+                border_positions.append(
+                    [self.dim[0] - int(self.inside_border_width / 2),  # + self.inside_border_width % 2-1,
+                     self.dim[1] - int(self.inside_border_width / 2)  # + self.inside_border_width % 2-1
+                     ])
 
-            border_positions.append([int(self.inside_border_width/2) + self.inside_border_width % 2,
-                                     self.dim[1] - int(self.inside_border_width / 2)# + self.inside_border_width % 2-1
-                                     ])
+                border_positions.append([int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                                         self.dim[1] - int(self.inside_border_width / 2)
+                                         # + self.inside_border_width % 2-1
+                                         ])
 
-            border_positions.append([int(self.inside_border_width/2) + self.inside_border_width % 2,
-                                     0
-                                     ])
+                border_positions.append([int(self.inside_border_width / 2) + self.inside_border_width % 2,
+                                         0
+                                         ])
 
+                border_strokes.append('M')
 
-            border_strokes.append('M')
+                for stroke, border_position in zip(border_strokes, border_positions):
+                    border_path += "%s %s %s" % (border_position[0], border_position[1], stroke)
 
-            for stroke, border_position in zip(border_strokes, border_positions):
-                border_path += "%s %s %s" % (border_position[0], border_position[1], stroke)
-
-            border_path += "%s %s" % (border_positions[0][0], border_positions[0][1])
+                border_path += "%s %s" % (border_positions[0][0], border_positions[0][1])
 
             chart_area.add(chart_area.path(border_path,
                                          shape_rendering='crispEdges',
@@ -280,8 +358,8 @@ class Scatter(Chart):
                                          stroke_width=self.inside_border_width))
 
 
+        chart_area.add(self.draw_border())
         subfigure.add(chart_area)
-
         subfigure.add(subfigure.text('%s' % self.title,
                                      insert=(
                                          round(self.pos[0] + (self.dim[0] - 1) / 2),
@@ -291,8 +369,74 @@ class Scatter(Chart):
         return subfigure
 
 
-class Histogram(Chart):
-    pass
+class Bar(Chart):
+
+    def __init__(self, data_name):
+        super().__init__(data_name)
+        self.subtype = 'Bar'
+        self.style = 'grouped'
+        self.group_spacing = 5
+        self.bar_spacing = 5
+        self.margins = [5, 5]
+        self.bar_line_width = 1
+        self.bar_fill_color = (0, 0, 0)
+        self.bar_line_color = (0, 0, 0)
+        self.ylim = None
+
+
+    def draw(self, main_figure):
+        # get the data series
+        data = []
+        for series in main_figure.data[self.data_name]:
+            data.append(series)
+
+        # temporary since we're just developing with one series
+        data = data[0]
+
+        subfigure = svgwrite.Drawing(size=(main_figure.dim[0], main_figure.dim[1]))
+        chart_area = svgwrite.Drawing(
+            size=(self.dim[0], self.dim[1]),
+            x=self.pos[0], y=self.pos[1])
+
+        # calculate bar widths. ensuring fidelity with respect to margin and bar spacing
+        print(self.dim[0], self.margins, self.group_spacing)
+        widths = [(self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))//len(data)]*len(data)
+        remainder = (self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))%len(data)
+
+        for i, width in zip(range(remainder), widths):
+            widths[i] += 1
+
+        # get the top-middle coordinate of each bar. We'll use this for our rectangles
+        bar_y_coords = []
+        heights = []
+        for i, y in enumerate(data):
+            # add coordinates
+            bar_y_coords.append(self.dim[1] - (y - self.ylim[0]) * self.get_y_res())
+            heights.append((y - self.ylim[0]) * self.get_y_res())
+
+        # get the left x value for our rectangles
+        bar_x_coords = [self.margins[0]]
+        for width in widths[:-1]:
+            bar_x_coords.append(bar_x_coords[-1] + width + self.group_spacing)
+        print('X coords', bar_x_coords)
+
+        for x, y, width, height in zip(bar_x_coords, bar_y_coords, widths, heights):
+            print(x, y, width)
+            chart_area.add(
+                chart_area.rect(
+                    shape_rendering='crispEdges',
+                    insert=(x, y),
+                    size=(width, height),
+                    fill=rgb(self.bar_fill_color[0], self.bar_fill_color[1], self.bar_fill_color[2]),
+                    stroke=rgb(self.bar_line_color[0], self.bar_line_color[1],
+                               self.bar_line_color[2], ),
+                    stroke_width=self.bar_line_width
+                )
+            )
+        chart_area.add(self.draw_border())
+        subfigure.add(chart_area)
+
+        return subfigure
 
 
 class Axis:
@@ -387,8 +531,7 @@ class YAxis(Axis):
                     self.pos[1],
                     self.pos[0] - self.axis_offset - self.axis_linewidth/2,
                     self.pos[1] + self.dim)
-            subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color, stroke_width=self.axis_linewidth,
-                                         shape_rendering='crispEdges'))
+            subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color, stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
 
             for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
@@ -397,9 +540,7 @@ class YAxis(Axis):
                     self.pos[0] - self.major_tick_length - self.axis_offset - self.axis_linewidth,
                     self.pos[1] + self.dim - y_res * major_tick_value)
             major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,
-                                         stroke_width=self.major_tick_linewidth,
-                                         shape_rendering='crispEdges'))
+            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color, stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
             # label the ticks
             for major_tick_value in major_tick_values:
@@ -416,8 +557,7 @@ class YAxis(Axis):
                 self.pos[1] + self.dim)
             subfigure.add(subfigure.path(border_path, fill="none",
                                          stroke=self.color,
-                                         stroke_width=self.axis_linewidth,
-                                         shape_rendering='crispEdges'))
+                                         stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
             for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     self.pos[0] + self.axis_offset + linked_chart.dim[0],
@@ -426,8 +566,7 @@ class YAxis(Axis):
                     self.pos[1] + self.dim - y_res * major_tick_value)
 
             major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,stroke_width=self.major_tick_linewidth,
-                                         shape_rendering='crispEdges'))
+            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
             # label the ticks
             for major_tick_value in major_tick_values:
@@ -500,8 +639,7 @@ class XAxis(Axis):
             subfigure.add(subfigure.path(border_path,
                                          fill="none",
                                          stroke=self.color,
-                                         stroke_width=self.axis_linewidth,
-                                         shape_rendering='crispEdges'))
+                                         stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
 
             # draw the ticks
             major_tick_path = "M"
@@ -520,8 +658,7 @@ class XAxis(Axis):
             subfigure.add(subfigure.path(major_tick_path,
                                          fill="none",
                                          stroke=self.color,
-                                         stroke_width=self.major_tick_linewidth,
-                                         shape_rendering='crispEdges'))
+                                         stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
 
             # label the ticks
@@ -553,8 +690,7 @@ class XAxis(Axis):
             subfigure.add(subfigure.path(border_path,
                                          fill="none",
                                          stroke=self.color,
-                                         stroke_width=self.axis_linewidth,
-                                         shape_rendering='crispEdges'))
+                                         stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
 
             # draw the ticks
             major_tick_path = "M"
@@ -570,8 +706,7 @@ class XAxis(Axis):
             subfigure.add(subfigure.path(major_tick_path,
                                          fill="none",
                                          stroke=self.color,
-                                         stroke_width=self.major_tick_linewidth,
-                                         shape_rendering='crispEdges'))
+                                         stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
             # label the ticks
             for tick_value in tick_values:
@@ -618,6 +753,9 @@ class Plotxel:
         elif drawable_type == 'YHist':
             print("YHist not implemented yet.")
 
+        elif drawable_type == 'Bar':
+            self.drawables[drawable_name] = Bar(data_name)
+
         else:
             warnings.warn("Could not create a drawable of '%s'. Acceptable inputs are 'Scatter', 'YAxis', 'XAxis', 'YHist', and 'XHist'"%drawable_type, Warning)
 
@@ -629,7 +767,7 @@ class Plotxel:
         :return:
         """
         if self.anti_aliasing:
-            svg_html = svgwrite.Drawing(size=(self.dim[0], self.dim[1]))
+            svg_html = svgwrite.Drawing(size=(self.dim[0], self.dim[1]), shape_rendering='auto')
         else:
             svg_html = svgwrite.Drawing(size=(self.dim[0], self.dim[1]), shape_rendering='crispEdges')
 
@@ -666,7 +804,7 @@ class Plotxel:
                 filename += '.png'
             svg2png(bytestring=self.draw(), write_to=filename)
             return filename
-        print(self.draw())
+        #print(self.draw())
         mem_file = BytesIO()
         svg2png(self.draw(), write_to=mem_file)
         return mem_file

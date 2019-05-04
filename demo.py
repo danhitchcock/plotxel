@@ -1,10 +1,11 @@
 from plotxel import Plotxel
 
-x = Plotxel((800, 400))  # our main drawing canvas in x, y
+x = Plotxel((800, 500))  # our main drawing canvas in x, y
 
 # add some data as a series. The series name, the x data, and y data
 series1 = [i for i in range(10)]
 x.add_data('series1', series1, series1)
+x.add_data('series2', [1, 2, 3, 4, 5], [1, 2, 3, 4, 5])
 
 # left plot -- its name, type, and data it's linked to
 plot1 = x.add_drawable("plot1", "Scatter", "series1")
@@ -37,14 +38,31 @@ ax3.setattrs(
     axis_label_offset=30
 )
 
+plot3 = x.add_drawable('bar1', 'Bar', 'series2')
+plot3.setattrs(
+    pos=(50, 250),
+    ylim=[0, 10],
+    title = 'Cumulative gees encountered'
+)
+
+ax4 = x.add_drawable('ax4', 'YAxis', link_to="bar1")
+ax4.setattrs(
+    axis_offset=-1,
+    axis_label='Cumulative geese encountered'
+)
+
+
 x.show()
 
 # or for SVG
 # svg_html = x.draw()
 
 # or for image in BytesIO / save to filename
-x.render(filename='example1.png')
+# x.render(filename='example1.png')
 
+#x.anti_aliasing=False
+
+#x.show()
 """
 # create a drawable object. Include its name, its type, and what data it is linked to
 plot1 = x.add_drawable("plot1", "Scatter", "series1")  # assign during creation
