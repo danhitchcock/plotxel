@@ -61,7 +61,7 @@ x.show()
 # x.render(filename='example1.png')
 
 #x.anti_aliasing=False
-# quick test!
+# quick test! another test
 #x.show()
 """
 # create a drawable object. Include its name, its type, and what data it is linked to
