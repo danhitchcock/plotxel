@@ -64,6 +64,7 @@ x.show()
 # quick test! another test
 #x.show()
 """
+I deleted my old NanoBrewed account, so if any commits come through under that name then I frankly do not understand.
 # create a drawable object. Include its name, its type, and what data it is linked to
 plot1 = x.add_drawable("plot1", "Scatter", "series1")  #d assign during creation
 plot1 = x.drawables['plot1']d  # or retrieve it later!
