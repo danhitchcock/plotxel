@@ -42,7 +42,7 @@ plot3 = x.add_drawable('bar1', 'Bar', 'series2')
 plot3.setattrs(
     pos=(50, 250),
     ylim=[0, 10],
-    title = 'Cumulative gees encountered'
+    title = 'Cumulative geese encountered'
 )
 
 ax4 = x.add_drawable('ax4', 'YAxis', link_to="bar1")

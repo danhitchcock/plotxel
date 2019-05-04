@@ -199,6 +199,15 @@ class Chart:
                                stroke_width=self.inside_border_width)
 
 
+    def draw_title(self):
+        return svgwrite.text.Text('%s' % self.title,
+                                     insert=(
+                                         round(self.pos[0] + (self.dim[0] - 1) / 2),
+                                         round(self.pos[1] - self.title_offset)
+                                     ),
+                                     style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom"%(self.title_font_size, self.title_font))
+
+
 class Scatter(Chart):
     def __init__(self, data_name):
         super().__init__(data_name)
@@ -359,13 +368,9 @@ class Scatter(Chart):
 
 
         chart_area.add(self.draw_border())
+        subfigure.add(self.draw_title())
         subfigure.add(chart_area)
-        subfigure.add(subfigure.text('%s' % self.title,
-                                     insert=(
-                                         round(self.pos[0] + (self.dim[0] - 1) / 2),
-                                         round(self.pos[1] - self.title_offset)
-                                     ),
-                                     style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom"%(self.title_font_size, self.title_font)), )
+
         return subfigure
 
 
@@ -434,6 +439,7 @@ class Bar(Chart):
                 )
             )
         chart_area.add(self.draw_border())
+        subfigure.add(self.draw_title())
         subfigure.add(chart_area)
 
         return subfigure
