@@ -65,7 +65,7 @@ x.show()
 #x.show()
 """
 # create a drawable object. Include its name, its type, and what data it is linked to
-plot1 = x.add_drawable("plot1", "Scatter", "series1")  # assign during creation
+plot1 = x.add_drawable("plot1", "Scatter", "series1")  #d assign during creation
 plot1 = x.drawables['plot1']  # or retrieve it later!
 plot1.pos = [50, 50]  # position from top corner. 0,0 is the top left pixel; this gives us [X, Y] blank pixels from y and x
 plot1.dim = [200, 100]  # how big is the chart area?
