@@ -7,7 +7,6 @@ from collections import OrderedDict
 import warnings
 from io import BytesIO
 import cairosvg
-#from warnings import Warning
 
 
 def smart_limits(data):
@@ -110,7 +109,6 @@ class Chart:
     def __init__(self, data_name):
 
         defaults = self.defaults
-        #print(defaults)
         self.type = 'Chart'
         # chart properties
         self.dim = defaults['dim']  # [x, y] pixel size of graph. Does not include axes. Border will be truncated
@@ -451,14 +449,11 @@ class Axis:
         self.data_name = data_name
         self.dim = 0
         self.pos = []  # [x, y] svg pixel coordinates of bottom left of chart
-        self.axis_offset = 0
         self.lim = []  # [min, max] limits of our axis
         self.color = rgb(0, 0, 0)  # color of our axis line
 
-        self.axis_label = 'Axis'
-        self.axis_label_font_size = 10
-        self.axis_label_offset = 10
-
+        self.axis_offset = 0
+        self.axis_linewidth = 1
 
         self.major_tick_values = None
         self.major_tick_linewidth = 1
@@ -470,16 +465,17 @@ class Axis:
         self.minor_tick_linewidth = 1
         self.minor_tick_color = rgb(0, 0, 0)
 
-        self.axis_linewidth = 1
+        self.labels = []  # labels for our major ticks
+        self.label_font_size = 10  # font size of the axis labels
+        self.label_offset_x = 0  # how far away the axis labels are away from the end of the ticks, y axis.
+        self.label_offset_y = 0  # how far away the axis labels are away from the end of the ticks, x axis.
 
-        self.tick_labels = []  # labels for our major ticks
+        self.title = 'Axis'
+        self.title_font_size = 12
+        self.title_offset = 25
+        self.title_font = 'arial'
+
         self.link_to = link_to
-        self.text_offset_x = 0  # how far away the axis labels are away from the end of the ticks, y axis. 
-        # Reverses if top/bottom or right/left axis
-        self.text_offset_y = 0  # how far away the axis labels are away from the end of the ticks, x axis.
-        # Reverses if top/bottom or right/left axis
-        self.font_size = 10  # font size of the axis labels
-
     def setattrs(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -526,7 +522,7 @@ class YAxis(Axis):
         y_res = self.get_y_res()
         subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                            main_figure.dim[1]),
-                                     style="text-anchor:end;font-size:%spx;font-style:arial;alignment-baseline:middle"%self.font_size)
+                                     style="text-anchor:end;font-size:%spx;font-style:arial;alignment-baseline:middle"%self.label_font_size)
 
         # start the svg path for the major tick
         major_tick_path = "M"
@@ -550,10 +546,21 @@ class YAxis(Axis):
 
             # label the ticks
             for major_tick_value in major_tick_values:
-                x = self.pos[0] - self.major_tick_length - self.text_offset_x - self.axis_offset - self.axis_linewidth
-                y = self.pos[1] + self.dim - y_res * major_tick_value + self.text_offset_y# + self.font_size/2.5
-                subfigure.add(subfigure.text('%s'%major_tick_value,
+                x = self.pos[0] - self.major_tick_length - self.label_offset_x - self.axis_offset - self.axis_linewidth
+                y = self.pos[1] + self.dim - y_res * major_tick_value + self.label_offset_y# + self.font_size/2.5
+                subfigure.add(subfigure.text('%s' % major_tick_value,
                                              insert=(x, y)),)
+
+            # add the axis title
+            text_x = round(self.pos[0] - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset)
+            text_y = round(self.pos[1] + (self.dim-1)/2)
+            subfigure.add(
+                subfigure.text('%s' % self.title,
+                               insert=(text_x, text_y),
+                               style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font),
+                               transform="rotate(-90, %s, %s)"%(text_x, text_y)
+                              ),
+            )
 
         if self.side == 'right':
             border_path = "M %s %s L %s %s" % (
@@ -576,9 +583,9 @@ class YAxis(Axis):
 
             # label the ticks
             for major_tick_value in major_tick_values:
-                x = self.pos[0] + self.major_tick_length + self.text_offset_x + self.axis_offset + \
+                x = self.pos[0] + self.major_tick_length + self.label_offset_x + self.axis_offset + \
                     linked_chart.dim[0] + self.axis_linewidth
-                y = self.pos[1] + self.dim - y_res * major_tick_value + self.text_offset_y
+                y = self.pos[1] + self.dim - y_res * major_tick_value + self.label_offset_y
                 subfigure.add(
                     subfigure.text('%s' % major_tick_value,
                                    insert=(x, y),
@@ -586,6 +593,16 @@ class YAxis(Axis):
                                    )
                 )
 
+            text_x = round(self.pos[0] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth + self.title_offset + linked_chart.dim[0])
+            text_y = round(self.pos[1] + (self.dim-1)/2)
+
+            subfigure.add(
+                subfigure.text('%s' % self.title,
+                               insert=(text_x, text_y),
+                               style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:hanging" % (self.title_font_size, self.title_font),
+                               transform="rotate(-90, %s, %s)"%(text_x, text_y)
+                              ),
+            )
         return subfigure
 
     def set_defaults(self, data):
@@ -636,8 +653,8 @@ class XAxis(Axis):
         if self.side == 'top':
             subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                                main_figure.dim[1]),
-                                         style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom" % (self.font_size, self.major_tick_font))
-            border_path = "M %s %s L %s %s"%(self.pos[0],
+                                         style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom" % (self.label_font_size, self.major_tick_font))
+            border_path = "M %s %s L %s %s" % (self.pos[0],
                                              self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth/2,
                                              self.pos[0] + self.dim,
                                              self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth/2)
@@ -657,10 +674,6 @@ class XAxis(Axis):
                     round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.axis_linewidth))
 
             major_tick_path = major_tick_path[:-2]
-
-            # draw the axis label
-
-
             subfigure.add(subfigure.path(major_tick_path,
                                          fill="none",
                                          stroke=self.color,
@@ -668,25 +681,25 @@ class XAxis(Axis):
 
 
             # label the ticks
-
-
             for tick_value in tick_values:
-                x = round(self.pos[0] + x_res * tick_value + self.text_offset_x),
-                y = round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.text_offset_y - self.axis_linewidth) # + self.font_size/2.5
+                x = round(self.pos[0] + x_res * tick_value + self.label_offset_x),
+                y = round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth) # + self.font_size/2.5
                 subfigure.add(subfigure.text('%s' % tick_value,
                                              insert=(x, y)), )
 
-            # and the label
-            subfigure.add(subfigure.text('%s' % self.axis_label,
+            # add the axis title
+            subfigure.add(subfigure.text('%s' % self.title,
                                          insert=(
                                              round(self.pos[0] + (self.dim-1)/2),
-                                             round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.text_offset_y - self.axis_linewidth - self.axis_label_offset)
-                                         )), )
+                                             round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset)
+                                         ),
+                                        style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font),
+                          ), )
 
         if self.side =='bottom':
             subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                                main_figure.dim[1]),
-                                         style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top" % self.font_size)
+                                         style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top" % self.label_font_size)
 
             border_path = "M %s %s L %s %s"%(self.pos[0],
                                              self.pos[1] + self.axis_offset + self.axis_linewidth/2,
@@ -716,16 +729,19 @@ class XAxis(Axis):
 
             # label the ticks
             for tick_value in tick_values:
-                x = self.pos[0] + x_res * tick_value + self.text_offset_x
-                y = self.pos[1] + self.major_tick_length + self.axis_offset + self.text_offset_y + self.axis_linewidth # + self.font_size/2.5
+                x = self.pos[0] + x_res * tick_value + self.label_offset_x
+                y = self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth # + self.font_size/2.5
                 subfigure.add(subfigure.text('%s' % tick_value,
                                              insert=(x, y)), )
-
-            subfigure.add(subfigure.text('%s' % self.axis_label,
+            # add the axis title
+            subfigure.add(subfigure.text('%s' % self.title,
                                          insert=(
                                              round(self.pos[0] + (self.dim-1)/2),
-                                             round(self.pos[1] + self.major_tick_length + self.axis_offset + self.text_offset_y + self.axis_linewidth + self.axis_label_offset)
-                                         )), )
+                                             round(self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth + self.title_offset)
+                                         ),
+                                         style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (
+                                         self.title_font_size, self.title_font),
+                                         ), )
 
         return subfigure
 

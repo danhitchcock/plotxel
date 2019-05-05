@@ -25,6 +25,13 @@ plot2.setattrs(
 # add some axes, and link them to our plots. It will copy the size, position, scale, and limits.
 ax1 = x.add_drawable("ax1", 'YAxis', link_to="plot1")
 ax1.axis_offset = 10
+ax1b = x.add_drawable('ax1b', 'XAxis', link_to='plot1')
+ax1t = x.add_drawable('ax1t', 'XAxis', link_to='plot1')
+ax1t.setattrs(
+    side='top'
+)
+ax1r = x.add_drawable('ax1r', 'YAxis', link_to='plot1')
+ax1r.side='right'
 
 ax2 = x.add_drawable("ax2", 'YAxis', link_to="plot2")
 ax2.side = 'right'
@@ -34,21 +41,20 @@ ax3 = x.add_drawable("ax3", 'XAxis', link_to="plot2")
 ax3.setattrs(
     side='bottom',
     axis_offset=10,
-    axis_label="Number of freaking geese",
-    axis_label_offset=30
+    title="Number of freaking geese",
 )
 
 plot3 = x.add_drawable('bar1', 'Bar', 'series2')
 plot3.setattrs(
-    pos=(50, 250),
+    pos=(150, 250),
     ylim=[0, 10],
-    title = 'Cumulative geese encountered'
+    title='Cumulative geese encountered'
 )
 
 ax4 = x.add_drawable('ax4', 'YAxis', link_to="bar1")
 ax4.setattrs(
     axis_offset=-1,
-    axis_label='Cumulative geese encountered'
+    title='Cumulative geese encountered'
 )
 
 
@@ -64,7 +70,7 @@ x.show()
 # quick test! another test
 #x.show()
 """
-testing with updated email.
+
 # create a drawable object. Include its name, its type, and what data it is linked to
 plot1 = x.add_drawable("plot1", "Scatter", "series1")  #d assign during creation
 plot1 = x.drawables['plot1']d  # or retrieve it later!
