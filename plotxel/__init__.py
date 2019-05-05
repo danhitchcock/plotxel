@@ -444,38 +444,71 @@ class Bar(Chart):
 
 
 class Axis:
+    defaults = {
+        'dim': 0,
+        'pos': [],  # [x, y] svg pixel coordinates of bottom left of chart
+        'lim': [],  # [min, max] limits of our axis
+        'color': (0, 0, 0),  # color of our axis line
+
+        'axis_offset': 0,
+        'axis_linewidth': 1,
+
+        'major_tick_values': None,
+        'major_tick_linewidth': 1,
+        'major_tick_length': 5,
+        'major_tick_color': (0, 0, 0),
+        'major_ticks': [],
+        'major_tick_font': 'arial',
+
+        'minor_tick_linewidth': 1,
+        'minor_tick_color': (0, 0, 0),
+
+        'labels': [],  # labels for our major ticks
+        'label_font_size': 10,  # font size of the axis labels
+        'label_offset_x': 0,  # how far away the axis labels are away from the end of the ticks, y axis.
+        'label_offset_y': 0,  # how far away the axis labels are away from the end of the ticks, x axis.
+
+        'title': 'Axis',
+        'title_font_size': 12,
+        'title_offset': 25,
+        'title_font': 'arial'
+    }
+
     def __init__(self, data_name, link_to):
+        defaults = self.defaults
         self.type = 'Axis'
         self.data_name = data_name
-        self.dim = 0
-        self.pos = []  # [x, y] svg pixel coordinates of bottom left of chart
-        self.lim = []  # [min, max] limits of our axis
-        self.color = rgb(0, 0, 0)  # color of our axis line
-
-        self.axis_offset = 0
-        self.axis_linewidth = 1
-
-        self.major_tick_values = None
-        self.major_tick_linewidth = 1
-        self.major_tick_length = 5
-        self.major_tick_color = rgb(0, 0, 0)
-        self.major_ticks = []
-        self.major_tick_font = 'arial'
-
-        self.minor_tick_linewidth = 1
-        self.minor_tick_color = rgb(0, 0, 0)
-
-        self.labels = []  # labels for our major ticks
-        self.label_font_size = 10  # font size of the axis labels
-        self.label_offset_x = 0  # how far away the axis labels are away from the end of the ticks, y axis.
-        self.label_offset_y = 0  # how far away the axis labels are away from the end of the ticks, x axis.
-
-        self.title = 'Axis'
-        self.title_font_size = 12
-        self.title_offset = 25
-        self.title_font = 'arial'
-
         self.link_to = link_to
+
+        self.dim = defaults['dim']
+        self.pos = defaults['pos']  # [x, y] svg pixel coordinates of bottom left of chart
+        self.lim = defaults['lim']  # [min, max] limits of our axis
+        self.color = defaults['color']  # color of our axis line
+
+        self.axis_offset = defaults['axis_offset']
+        self.axis_linewidth = defaults['axis_linewidth']
+
+        self.major_tick_values = defaults['major_tick_values']
+        self.major_tick_linewidth = defaults['major_tick_linewidth']
+        self.major_tick_length = defaults['major_tick_length']
+        self.major_tick_color = defaults['major_tick_color']
+        self.major_ticks = defaults['major_ticks']
+        self.major_tick_font = defaults['major_tick_font']
+
+        self.minor_tick_linewidth = defaults['minor_tick_linewidth']
+        self.minor_tick_color = defaults['minor_tick_color']
+
+        self.labels = defaults['labels']  # labels for our major ticks
+        self.label_font_size = defaults['label_font_size']  # font size of the axis labels
+        self.label_offset_x = defaults['label_offset_x']  # how far away the axis labels are away from the end of the ticks, y axis.
+        self.label_offset_y = defaults['label_offset_y']  # how far away the axis labels are away from the end of the ticks, x axis.
+
+        self.title = defaults['title']
+        self.title_font_size = defaults['title_font_size']
+        self.title_offset = defaults['title_offset']
+        self.title_font = defaults['title_font']
+
+
     def setattrs(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -492,10 +525,11 @@ class YAxis(Axis):
     def get_y_res(self):
         return (self.dim - 1) / (self.lim[1] - self.lim[0])
 
-    def draw(self, main_figure):
+    def draw(self, main_figure=None):
         # grab any linked plot values
         # if there is a linked_chart and the values are not defined,
         # grab its data, its position, its dimensions and its limits
+
         if self.link_to:
             # print('establishing defaults')
             linked_chart = main_figure.drawables[self.link_to]
@@ -533,7 +567,7 @@ class YAxis(Axis):
                     self.pos[1],
                     self.pos[0] - self.axis_offset - self.axis_linewidth/2,
                     self.pos[1] + self.dim)
-            subfigure.add(subfigure.path(border_path, fill="none", stroke=self.color, stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
+            subfigure.add(subfigure.path(border_path, fill="none", stroke=rgb(*self.color), stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
 
             for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
@@ -542,7 +576,7 @@ class YAxis(Axis):
                     self.pos[0] - self.major_tick_length - self.axis_offset - self.axis_linewidth,
                     self.pos[1] + self.dim - y_res * major_tick_value)
             major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color, stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
+            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=rgb(*self.color), stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
             # label the ticks
             for major_tick_value in major_tick_values:
@@ -569,7 +603,7 @@ class YAxis(Axis):
                 self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.axis_linewidth/2,
                 self.pos[1] + self.dim)
             subfigure.add(subfigure.path(border_path, fill="none",
-                                         stroke=self.color,
+                                         stroke=rgb(*self.color),
                                          stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
             for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
@@ -579,7 +613,7 @@ class YAxis(Axis):
                     self.pos[1] + self.dim - y_res * major_tick_value)
 
             major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=self.color,stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
+            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=rgb(*self.color),stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
             # label the ticks
             for major_tick_value in major_tick_values:
@@ -661,7 +695,7 @@ class XAxis(Axis):
 
             subfigure.add(subfigure.path(border_path,
                                          fill="none",
-                                         stroke=self.color,
+                                         stroke=rgb(*self.color),
                                          stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
 
             # draw the ticks
@@ -676,7 +710,7 @@ class XAxis(Axis):
             major_tick_path = major_tick_path[:-2]
             subfigure.add(subfigure.path(major_tick_path,
                                          fill="none",
-                                         stroke=self.color,
+                                         stroke=rgb(*self.color),
                                          stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
 
@@ -708,7 +742,7 @@ class XAxis(Axis):
 
             subfigure.add(subfigure.path(border_path,
                                          fill="none",
-                                         stroke=self.color,
+                                         stroke=rgb(*self.color),
                                          stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
 
             # draw the ticks
@@ -724,7 +758,7 @@ class XAxis(Axis):
 
             subfigure.add(subfigure.path(major_tick_path,
                                          fill="none",
-                                         stroke=self.color,
+                                         stroke=rgb(*self.color),
                                          stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
             # label the ticks

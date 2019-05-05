@@ -1,4 +1,4 @@
-from plotxel import Plotxel
+from plotxel import Plotxel, Axis
 
 x = Plotxel((800, 500))  # our main drawing canvas in x, y
 
@@ -37,6 +37,7 @@ ax2 = x.add_drawable("ax2", 'YAxis', link_to="plot2")
 ax2.side = 'right'
 ax2.axis_offset = 10
 
+Axis.defaults['color']=(0, 0, 255)
 ax3 = x.add_drawable("ax3", 'XAxis', link_to="plot2")
 ax3.setattrs(
     side='bottom',
