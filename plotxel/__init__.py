@@ -110,6 +110,8 @@ class Chart:
 
         defaults = self.defaults
         self.type = 'Chart'
+        self.data_name = data_name  # the data we link our chart to
+
         # chart properties
         self.dim = defaults['dim']  # [x, y] pixel size of graph. Does not include axes. Border will be truncated
         self.pos = defaults['pos']  # [x, y] pixels from top left corner
@@ -119,8 +121,6 @@ class Chart:
         self.inside_border_width = defaults['inside_border_width']
         self.inside_border = defaults['inside_border']  # top, right, bottom, left widths for the border
         self.inside_border_color = defaults['inside_border_color']  # border color
-
-        self.data_name = data_name  # the data we link our chart to
 
         self.title = defaults['title']
         self.title_font = defaults['title_font']
@@ -137,7 +137,6 @@ class Chart:
         # line connector properties
         self.line_width = defaults['line_width']
         self.line_color = defaults['line_color']
-
 
     def get_x_res(self):
         return (self.dim[0]-1) / (self.xlim[1] - self.xlim[0])
@@ -508,7 +507,6 @@ class Axis:
         self.title_offset = defaults['title_offset']
         self.title_font = defaults['title_font']
 
-
     def setattrs(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -588,6 +586,7 @@ class YAxis(Axis):
             # add the axis title
             text_x = round(self.pos[0] - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset)
             text_y = round(self.pos[1] + (self.dim-1)/2)
+
             subfigure.add(
                 subfigure.text('%s' % self.title,
                                insert=(text_x, text_y),
