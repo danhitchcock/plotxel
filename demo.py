@@ -69,13 +69,13 @@ ax4.setattrs(
 )
 
 
-# x.show()
+x.show()
 
 # or for SVG
 # svg_html = x.draw()
 
 # or for image  in BytesIO / save to filename
-x.render(filename='example1.png')
+# x.render(filename='example2.png')
 
 #x.anti_aliasing=False
 # quick test! another test
