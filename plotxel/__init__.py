@@ -7,7 +7,7 @@ from collections import OrderedDict
 import warnings
 from io import BytesIO
 import cairosvg
-
+__version__ = "0.0.5"
 
 def smart_limits(data):
     rounding_factor = .4
@@ -393,8 +393,8 @@ class Bar(Chart):
         for series in main_figure.data[self.data_name]:
             data.append(series)
 
-        # temporary since we're just developing with one series
-        data = data[0]
+        # for a bar chart, pull the Y data
+        data = data[1]
 
         subfigure = svgwrite.Drawing(size=(main_figure.dim[0], main_figure.dim[1]))
         chart_area = svgwrite.Drawing(
@@ -403,11 +403,7 @@ class Bar(Chart):
 
         # calculate bar widths. ensuring fidelity with respect to margin and bar spacing
 
-        widths = [(self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))//len(data)]*len(data)
-        remainder = (self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))%len(data)
-
-        for i, width in zip(range(remainder), widths):
-            widths[i] += 1
+        widths = self.get_widths(data)
 
         # get the top-middle coordinate of each bar. We'll use this for our rectangles
         bar_y_coords = []
@@ -418,15 +414,13 @@ class Bar(Chart):
             heights.append((y - self.ylim[0]) * self.get_y_res())
 
         # get the left x value for our rectangles
-        bar_x_coords = [self.margins[0]]
-        for width in widths[:-1]:
-            bar_x_coords.append(bar_x_coords[-1] + width + self.group_spacing)
+        bar_x_coords = self.get_x_coords(widths)
 
         for x, y, width, height in zip(bar_x_coords, bar_y_coords, widths, heights):
             chart_area.add(
                 chart_area.rect(
                     shape_rendering='crispEdges',
-                    insert=(x, y),
+                    insert=(x-int(width/2), y),
                     size=(width, height),
                     fill=rgb(self.bar_fill_color[0], self.bar_fill_color[1], self.bar_fill_color[2]),
                     stroke=rgb(self.bar_line_color[0], self.bar_line_color[1],
@@ -439,6 +433,23 @@ class Bar(Chart):
         subfigure.add(chart_area)
 
         return subfigure
+
+    def get_x_coords(self, widths):
+        bar_x_coords = [self.margins[0]]
+        for width in widths[:-1]:
+            bar_x_coords.append(bar_x_coords[-1] + width + self.group_spacing)
+        for i, (width, bar_x_coord) in enumerate(zip(widths, bar_x_coords)):
+            bar_x_coords[i] += int(width/2)
+        return bar_x_coords
+
+    def get_widths(self, data):
+        widths = [(self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))//len(data)]*len(data)
+        remainder = (self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))%len(data)
+
+        for i, width in zip(range(remainder), widths):
+            widths[i] += 1
+
+        return widths
 
 
 class Axis:
@@ -528,7 +539,7 @@ class Axis:
         # label the ticks
         for coord in tick_coords:
             subfigure.add(subfigure.text('%s' % coord[0],
-                                         insert=(coord[1], coord[2])),)
+                                         insert=(coord[1]+1, coord[2])),)
         # add the axis title
         subfigure.add(subfigure.text('%s' % self.title,
                                      insert=title_coords,
@@ -667,7 +678,6 @@ class XAxis(Axis):
     def get_x_res(self):
         return (self.dim - 1) / (self.lim[1] - self.lim[0])
 
-
     def draw(self, main_figure):
         # write a function to grabbed any linked plot values
         # if there is a linked_chart and the values are not defined,
@@ -690,34 +700,53 @@ class XAxis(Axis):
 
             chart_height = main_figure.drawables[self.link_to].dim[1]
 
-        data = main_figure.data[self.data_name][0]
-        tick_values = smart_ticks(data, self.lim)
-        x_res = self.get_x_res()
+        # do some work to get where our ticks will be
+        # tick_values - labels
+        # tick_positions - x coordinates for the tick
+        if main_figure.drawables[self.link_to].subtype == 'Scatter':
+            data = main_figure.data[self.data_name][0]
+            x_res = self.get_x_res()
+            tick_values = smart_ticks(data, self.lim)
+            tick_positions = [x_res * tick_value for tick_value in tick_values]
+
+        elif main_figure.drawables[self.link_to].subtype == 'Bar':
+            try:
+                # see if we have data for a bar chart. If so, we'll grpah the Y values and use the X for labels
+                data = main_figure.data[self.data_name][1]
+                tick_values = main_figure.data[self.data_name][0]
+            except:
+                data = main_figure.data[self.data_name]
+                tick_values = [i+1 for i in range(len(main_figure.data[self.data_name]))]
+            print(data, tick_values)
+            widths = main_figure.drawables[self.link_to].get_widths(data)
+            tick_positions = main_figure.drawables[self.link_to].get_x_coords(widths)
+            tick_positions = [position-1 for position in tick_positions]
+
+
+
 
         major_tick_path = "M"
+        tick_coords = []
 
         if self.side == 'top':
             label_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom" % (self.label_font_size, self.major_tick_font)
-            border_path = "M %s %s L %s %s" % (self.pos[0],
+            tick_positions = "M %s %s L %s %s" % (self.pos[0],
                                                self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth / 2,
                                                self.pos[0] + self.dim,
                                                self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth / 2)
             # draw the ticks
-            for tick_value in tick_values:
+            for tick_value, tick_position in zip(tick_values, tick_positions):
                 major_tick_path += " %s %s L %s %s M"%(
-                    round(self.pos[0] + x_res * tick_value + 1),
+                    round(self.pos[0] + tick_position + 1),
                     round(self.pos[1] - chart_height - self.axis_offset),
-                    round(self.pos[0] + x_res * tick_value + 1),
+                    round(self.pos[0] + tick_position + 1),
                     round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.axis_linewidth))
-            major_tick_path = major_tick_path[:-2]
-
-            # label the tickss
-            tick_coords = []
-            for tick_value in tick_values:
-                x = round(self.pos[0] + x_res * tick_value + self.label_offset_x),
+                x = round(self.pos[0] + tick_position + self.label_offset_x),
                 y = round(self.pos[
                               1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth)  # + self.font_size/2.5
-                tick_coords.append([x, y])
+                tick_coords.append([tick_value, x, y])
+
+            major_tick_path = major_tick_path[:-2]
             title_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font)
             title_coords = [
                 round(self.pos[0] + (self.dim-1)/2),
@@ -733,21 +762,17 @@ class XAxis(Axis):
                                              self.pos[0] + self.dim,
                                              self.pos[1] + self.axis_offset + self.axis_linewidth/2)
             # draw the ticks
-            for tick_value in tick_values:
+            for tick_value, tick_position in zip(tick_values, tick_positions):
                 major_tick_path += " %s %s L %s %s M"%(
-                    self.pos[0] + x_res * tick_value + 1,
+                    self.pos[0] + tick_position + 1,
                     self.pos[1] + self.axis_offset,# + self.axis_linewidth/2,
-                    self.pos[0] + x_res * tick_value + 1,
+                    self.pos[0] + tick_position + 1,
                     self.pos[1] + self.major_tick_length + self.axis_offset + self.axis_linewidth)
-
-            major_tick_path = major_tick_path[:-2]
-            tick_coords = []
-            # label the ticks
-            for tick_value in tick_values:
-                x = self.pos[0] + x_res * tick_value + self.label_offset_x
-                y = self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth # + self.font_size/2.5
+                x = self.pos[0] + tick_position + self.label_offset_x
+                y = self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth
                 tick_coords.append([tick_value, x, y])
 
+            major_tick_path = major_tick_path[:-2]
             title_coords = [
                 round(self.pos[0] + (self.dim - 1) / 2),
                 round(self.pos[

@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from plotxel import smart_ticks, smart_limits
 
+
 class TestSmartTicks(unittest.TestCase):
 
     def test_simple(self):

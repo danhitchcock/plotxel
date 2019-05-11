@@ -57,18 +57,23 @@ ax3.setattrs(
 # I think I would prefer axes to be blue!
 Axis.defaults['color'] = (0, 0, 255)
 
-plot3_attrs = {
-    'pos': (60, 300),
-    'ylim': [0, 10],
-    'title': 'Near Death Experiences With Geese'
-}
-plot3 = x.add_drawable('bar1', 'Bar', 'series2')
+# let's add some bar chart data. Since it's a vertical bar chart, we will pull Y data
+x.add_data('bar_data', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], [1, 9, 4, 5, 3, 6, 2])
+
+plot3 = x.add_drawable('bar1', 'Bar', 'bar_data')
 # or unpack a dict
+plot3_attrs = {
+    'pos': (150, 300),
+    'dim': (500, 150),
+    'ylim': [0, 10],
+    'title': 'Safely Nagivating Geese'
+}
 plot3.setattrs(**plot3_attrs)
 
-ax4 = x.add_drawable('ax4', 'YAxis', link_to="bar1", title='Near Death Experiences With Geese', title_offset=25)
-
+ax4 = x.add_drawable('ax4', 'YAxis', link_to="bar1", title='Likelihood of Goose Attack', title_offset=25)
+ax5 = x.add_drawable('ax5', 'XAxis', link_to='bar1', title='Day of Week', title_offset=5)
 # coming soon, Jupyter magic!
+#x.anti_aliasing=False
 x.show()
 
 # or for SVG
@@ -77,8 +82,7 @@ x.show()
 # or for image  in BytesIO / save to filename
 x.render(filename='example2.png')
 
-#x.anti_aliasing=False
-# quick test! another test
+
 #x.show()
 
 
