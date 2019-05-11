@@ -35,12 +35,14 @@ plot2.setattrs(
     pos=[450, 50],
     marker_shape='square',
     marker_fill_color=(255, 0, 0),
-    title='Analysis of Goose Encounters (red)'
+    title='Analysis of Goose Encounters (red)',
+    line_width=0
 )
 
 # add some axes, and link them to our plots. It will copy the size, position, scale, and limits of whichever plot it is linked to
 ax1 = x.add_drawable("ax1", 'YAxis', link_to="plot1")
 ax1.axis_offset = 10
+ax1.title_offset = 25  # distance from the ticks. Will have an auto feature in the future!
 ax1.title = "Near Death Experiences With Geese"
 
 # all other axes, let's put them flush with the graph by changing the default
@@ -48,25 +50,27 @@ ax1.title = "Near Death Experiences With Geese"
 Axis.defaults['axis_offset'] = -1
 ax1b = x.add_drawable('ax1b', 'XAxis', link_to='plot1')
 
-ax1r = x.add_drawable('ax1r', 'YAxis', link_to='plot1')
-ax1r.side = 'right'
-ax1r.title = 'Ax1 Right Title'
+# you can keep setting attributes in bulk
+ax1r = x.add_drawable('ax1r', 'YAxis', link_to='plot1', title_offset=20)
+ax1r.setattrs(
+    side='right',
+    title_offset=20,
+    title='Ax1 Right Title'
+)
 
-ax2 = x.add_drawable("ax2", 'YAxis', link_to="plot2")
-ax2.side = 'right'
-ax2.axis_offset = 10
+# or use the constructor!
+ax2 = x.add_drawable("ax2", 'YAxis', link_to="plot2", title_offset=20, side='right', axis_offset=10)
 
 ax3 = x.add_drawable("ax3", 'XAxis', link_to="plot2")
 ax3.setattrs(
     side='bottom',
     axis_offset=10,
-    title="Number of freaking geese",
+    title="Number of Freaking Geese",
 )
 
 
 # I think I would prefer axes to be blue!
 Axis.defaults['color'] = (0, 0, 255)
-
 
 plot3_attrs = {
     'pos': (60, 300),
@@ -74,25 +78,22 @@ plot3_attrs = {
     'title': 'Near Death Experiences With Geese'
 }
 plot3 = x.add_drawable('bar1', 'Bar', 'series2')
-
+# or unpack a dict
 plot3.setattrs(**plot3_attrs)
 
-ax4 = x.add_drawable('ax4', 'YAxis', link_to="bar1")
-ax4.setattrs(
-    axis_offset=-1,
-    title='Near Death Experiences With Geese'
-)
-    
+ax4 = x.add_drawable('ax4', 'YAxis', link_to="bar1", title='Near Death Experiences With Geese', title_offset=25)
+
+# coming soon, Jupyter magic!
 x.show()
 
 # or for SVG
 # svg_html = x.draw()
 
 # or for image  in BytesIO / save to filename
-# x.render(filename='example1.png')
+# x.render(filename='example2.png')
 
-# or make it crispy!    
 #x.anti_aliasing=False
+# quick test! another test
 #x.show()
 ```
     
