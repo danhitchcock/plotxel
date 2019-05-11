@@ -402,7 +402,7 @@ class Bar(Chart):
             x=self.pos[0], y=self.pos[1])
 
         # calculate bar widths. ensuring fidelity with respect to margin and bar spacing
-        print(self.dim[0], self.margins, self.group_spacing)
+
         widths = [(self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))//len(data)]*len(data)
         remainder = (self.dim[0] - sum(self.margins) - self.group_spacing*(len(data)-1))%len(data)
 
@@ -421,10 +421,8 @@ class Bar(Chart):
         bar_x_coords = [self.margins[0]]
         for width in widths[:-1]:
             bar_x_coords.append(bar_x_coords[-1] + width + self.group_spacing)
-        print('X coords', bar_x_coords)
 
         for x, y, width, height in zip(bar_x_coords, bar_y_coords, widths, heights):
-            print(x, y, width)
             chart_area.add(
                 chart_area.rect(
                     shape_rendering='crispEdges',
@@ -559,7 +557,6 @@ class YAxis(Axis):
         # grab its data, its position, its dimensions and its limits
 
         if self.link_to:
-            # print('establishing defaults')
             linked_chart = main_figure.drawables[self.link_to]
             if not self.data_name:
                 self.data_name = main_figure.drawables[self.link_to].data_name
@@ -638,7 +635,6 @@ class YAxis(Axis):
                 tick_coords.append([major_tick_value, x, y])
 
             major_tick_path = major_tick_path[:-2]
-            print('axis values:', self.pos[0] ,self.major_tick_length , self.axis_offset , self.label_offset_y , self.axis_linewidth , self.title_offset , linked_chart.dim[0])
             text_x = round(self.pos[0] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth + self.title_offset + linked_chart.dim[0] + self.title_font_size)
             text_y = round(self.pos[1] + (self.dim-1)/2)
             title_coords = (text_x, text_y)
@@ -693,9 +689,6 @@ class XAxis(Axis):
                 self.dim = main_figure.drawables[self.link_to].dim[0]
 
             chart_height = main_figure.drawables[self.link_to].dim[1]
-
-
-            #print(self.data_name, self.pos, self.lim, self.dim)
 
         data = main_figure.data[self.data_name][0]
         tick_values = smart_ticks(data, self.lim)
