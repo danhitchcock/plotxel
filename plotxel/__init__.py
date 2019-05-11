@@ -717,7 +717,6 @@ class XAxis(Axis):
             except:
                 data = main_figure.data[self.data_name]
                 tick_values = [i+1 for i in range(len(main_figure.data[self.data_name]))]
-            print(data, tick_values)
             widths = main_figure.drawables[self.link_to].get_widths(data)
             tick_positions = main_figure.drawables[self.link_to].get_x_coords(widths)
             tick_positions = [position-1 for position in tick_positions]
@@ -730,18 +729,19 @@ class XAxis(Axis):
 
         if self.side == 'top':
             label_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom" % (self.label_font_size, self.major_tick_font)
-            tick_positions = "M %s %s L %s %s" % (self.pos[0],
+            border_path = "M %s %s L %s %s" % (self.pos[0],
                                                self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth / 2,
                                                self.pos[0] + self.dim,
                                                self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth / 2)
             # draw the ticks
             for tick_value, tick_position in zip(tick_values, tick_positions):
+                # print(self.pos[0], tick_position, 1)
                 major_tick_path += " %s %s L %s %s M"%(
                     round(self.pos[0] + tick_position + 1),
                     round(self.pos[1] - chart_height - self.axis_offset),
                     round(self.pos[0] + tick_position + 1),
                     round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.axis_linewidth))
-                x = round(self.pos[0] + tick_position + self.label_offset_x),
+                x = round(self.pos[0] + tick_position + self.label_offset_x)
                 y = round(self.pos[
                               1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth)  # + self.font_size/2.5
                 tick_coords.append([tick_value, x, y])
@@ -750,7 +750,7 @@ class XAxis(Axis):
             title_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font)
             title_coords = [
                 round(self.pos[0] + (self.dim-1)/2),
-                round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset - self.label_font_size - self.title_font_sizecoinm)
+                round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset - self.label_font_size)
             ]
 
         # draw the main axis. Might simply overlap with the figure border
