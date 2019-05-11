@@ -206,9 +206,10 @@ class Chart:
 
 
 class Scatter(Chart):
-    def __init__(self, data_name):
+    def __init__(self, data_name, kwargs={}):
         super().__init__(data_name)
         self.subtype = 'Scatter'
+        self.setattrs(**kwargs)
 
 
     def SetDefaults(self, data):
@@ -373,7 +374,7 @@ class Scatter(Chart):
 
 class Bar(Chart):
 
-    def __init__(self, data_name):
+    def __init__(self, data_name, kwargs={}):
         super().__init__(data_name)
         self.subtype = 'Bar'
         self.style = 'grouped'
@@ -384,7 +385,7 @@ class Bar(Chart):
         self.bar_fill_color = (0, 0, 0)
         self.bar_line_color = (0, 0, 0)
         self.ylim = None
-
+        self.setattrs(**kwargs)
 
     def draw(self, main_figure):
         # get the data series
@@ -469,7 +470,7 @@ class Axis:
 
         'title': 'Axis',
         'title_font_size': 12,
-        'title_offset': 25,
+        'title_offset': 0,
         'title_font': 'arial'
     }
 
@@ -511,14 +512,43 @@ class Axis:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def draw_axis(self, main_figure, label_style, border_path, major_tick_path, tick_coords, title_coords, title_style, title_transform="rotate(0, 0, 0)"):
+        subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
+                                           main_figure.dim[1]),
+                                     style=label_style)
+        # draw the axis line
+        subfigure.add(subfigure.path(border_path,
+                                     fill="none",
+                                     stroke=rgb(*self.color),
+                                     stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
+
+        # draw the major ticks
+        subfigure.add(subfigure.path(major_tick_path,
+                                     fill="none",
+                                     stroke=rgb(*self.color),
+                                     stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
+        # label the ticks
+        for coord in tick_coords:
+            subfigure.add(subfigure.text('%s' % coord[0],
+                                         insert=(coord[1], coord[2])),)
+        # add the axis title
+        subfigure.add(subfigure.text('%s' % self.title,
+                                     insert=title_coords,
+                                     style=title_style,
+                                     transform=title_transform
+                      ), )
+
+        return subfigure
+
 
 class YAxis(Axis):
-    def __init__(self, data_name=None, link_to=None):
+    def __init__(self, data_name=None, link_to=None, kwargs={}):
         super().__init__(data_name, link_to)
         self.subtype = 'y'
         self.associated_drawable = ''
         self.side = 'left'
 
+        self.setattrs(**kwargs)
 
     def get_y_res(self):
         return (self.dim - 1) / (self.lim[1] - self.lim[0])
@@ -533,8 +563,6 @@ class YAxis(Axis):
             linked_chart = main_figure.drawables[self.link_to]
             if not self.data_name:
                 self.data_name = main_figure.drawables[self.link_to].data_name
-
-
             if not self.pos:
                 self.pos = main_figure.drawables[self.link_to].pos
 
@@ -544,28 +572,26 @@ class YAxis(Axis):
             if not self.dim:
                 self.dim = main_figure.drawables[self.link_to].dim[1]
 
-            # print(self.data_name, self.pos, self.lim, self.dim)
-
         data = main_figure.data[self.data_name][1]
         if not self.major_tick_values:
             major_tick_values = smart_ticks(data, self.lim)
 
 
         y_res = self.get_y_res()
-        subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
-                                           main_figure.dim[1]),
-                                     style="text-anchor:end;font-size:%spx;font-style:arial;alignment-baseline:middle"%self.label_font_size)
 
         # start the svg path for the major tick
         major_tick_path = "M"
+        tick_coords = []
 
         if self.side == 'left':
+            label_style = "text-anchor:end;font-size:%spx;font-style:%s;alignment-baseline:middle" % (
+            self.label_font_size, self.major_tick_font)
+
             border_path = "M %s %s L %s %s" % (
                     self.pos[0] - self.axis_offset - self.axis_linewidth/2,
                     self.pos[1],
                     self.pos[0] - self.axis_offset - self.axis_linewidth/2,
                     self.pos[1] + self.dim)
-            subfigure.add(subfigure.path(border_path, fill="none", stroke=rgb(*self.color), stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
 
             for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
@@ -573,37 +599,32 @@ class YAxis(Axis):
                     self.pos[1] + self.dim - y_res * major_tick_value,
                     self.pos[0] - self.major_tick_length - self.axis_offset - self.axis_linewidth,
                     self.pos[1] + self.dim - y_res * major_tick_value)
-            major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=rgb(*self.color), stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
-            # label the ticks
-            for major_tick_value in major_tick_values:
                 x = self.pos[0] - self.major_tick_length - self.label_offset_x - self.axis_offset - self.axis_linewidth
-                y = self.pos[1] + self.dim - y_res * major_tick_value + self.label_offset_y# + self.font_size/2.5
-                subfigure.add(subfigure.text('%s' % major_tick_value,
-                                             insert=(x, y)),)
+                y = self.pos[1] + self.dim - y_res * major_tick_value + self.label_offset_y
+
+                tick_coords.append([major_tick_value, x, y])
+
+            major_tick_path = major_tick_path[:-2]
 
             # add the axis title
             text_x = round(self.pos[0] - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset)
             text_y = round(self.pos[1] + (self.dim-1)/2)
+            title_coords = (text_x, text_y)
+            title_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font)
+            title_transform = "rotate(-90, %s, %s)" % (text_x, text_y)
 
-            subfigure.add(
-                subfigure.text('%s' % self.title,
-                               insert=(text_x, text_y),
-                               style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font),
-                               transform="rotate(-90, %s, %s)"%(text_x, text_y)
-                              ),
-            )
 
         if self.side == 'right':
+            label_style = "text-anchor:start;font-size:%spx;font-style:%s;alignment-baseline:middle" % (
+            self.label_font_size, self.major_tick_font)
+
             border_path = "M %s %s L %s %s" % (
                 self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.axis_linewidth/2,
                 self.pos[1],
                 self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.axis_linewidth/2,
                 self.pos[1] + self.dim)
-            subfigure.add(subfigure.path(border_path, fill="none",
-                                         stroke=rgb(*self.color),
-                                         stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
+
             for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     self.pos[0] + self.axis_offset + linked_chart.dim[0],
@@ -611,44 +632,42 @@ class YAxis(Axis):
                     self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.major_tick_length + self.axis_linewidth/2,
                     self.pos[1] + self.dim - y_res * major_tick_value)
 
-            major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path, fill="none", stroke=rgb(*self.color),stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
-
-            # label the ticks
-            for major_tick_value in major_tick_values:
                 x = self.pos[0] + self.major_tick_length + self.label_offset_x + self.axis_offset + \
                     linked_chart.dim[0] + self.axis_linewidth
                 y = self.pos[1] + self.dim - y_res * major_tick_value + self.label_offset_y
-                subfigure.add(
-                    subfigure.text('%s' % major_tick_value,
-                                   insert=(x, y),
-                                   text_anchor="start"
-                                   )
-                )
+                tick_coords.append([major_tick_value, x, y])
 
-            text_x = round(self.pos[0] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth + self.title_offset + linked_chart.dim[0])
+            major_tick_path = major_tick_path[:-2]
+            print('axis values:', self.pos[0] ,self.major_tick_length , self.axis_offset , self.label_offset_y , self.axis_linewidth , self.title_offset , linked_chart.dim[0])
+            text_x = round(self.pos[0] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth + self.title_offset + linked_chart.dim[0] + self.title_font_size)
             text_y = round(self.pos[1] + (self.dim-1)/2)
+            title_coords = (text_x, text_y)
+            title_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font)
+            title_transform = "rotate(-90, %s, %s)"%(text_x, text_y)
 
-            subfigure.add(
-                subfigure.text('%s' % self.title,
-                               insert=(text_x, text_y),
-                               style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:hanging" % (self.title_font_size, self.title_font),
-                               transform="rotate(-90, %s, %s)"%(text_x, text_y)
-                              ),
-            )
-        return subfigure
+        kwargs = {
+            'main_figure': main_figure,
+            'label_style': label_style,
+            'border_path': border_path,
+            'major_tick_path': major_tick_path,
+            'tick_coords': tick_coords,
+            'title_coords': title_coords,
+            'title_style': title_style,
+            'title_transform': title_transform
+        }
+        return self.draw_axis(**kwargs)
 
     def set_defaults(self, data):
         pass
 
 
 class XAxis(Axis):
-    def __init__(self, data_name=None, link_to=None):
+    def __init__(self, data_name=None, link_to=None, kwargs={}):
         super().__init__(data_name, link_to)
         self.subtype = 'x'
         self.associated_drawable = ''
         self.side = 'bottom'
-
+        self.setattrs(**kwargs)
     def get_x_res(self):
         return (self.dim - 1) / (self.lim[1] - self.lim[0])
 
@@ -682,70 +701,45 @@ class XAxis(Axis):
         tick_values = smart_ticks(data, self.lim)
         x_res = self.get_x_res()
 
-        # draw the main axis. Might simply overlap with the figure border
+        major_tick_path = "M"
+
         if self.side == 'top':
-            subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
-                                               main_figure.dim[1]),
-                                         style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom" % (self.label_font_size, self.major_tick_font))
+            label_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom" % (self.label_font_size, self.major_tick_font)
             border_path = "M %s %s L %s %s" % (self.pos[0],
-                                             self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth/2,
-                                             self.pos[0] + self.dim,
-                                             self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth/2)
-
-            subfigure.add(subfigure.path(border_path,
-                                         fill="none",
-                                         stroke=rgb(*self.color),
-                                         stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
-
+                                               self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth / 2,
+                                               self.pos[0] + self.dim,
+                                               self.pos[1] - chart_height - self.axis_offset - self.axis_linewidth / 2)
             # draw the ticks
-            major_tick_path = "M"
             for tick_value in tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     round(self.pos[0] + x_res * tick_value + 1),
                     round(self.pos[1] - chart_height - self.axis_offset),
                     round(self.pos[0] + x_res * tick_value + 1),
                     round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.axis_linewidth))
-
             major_tick_path = major_tick_path[:-2]
-            subfigure.add(subfigure.path(major_tick_path,
-                                         fill="none",
-                                         stroke=rgb(*self.color),
-                                         stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
 
-
-            # label the ticks
+            # label the tickss
+            tick_coords = []
             for tick_value in tick_values:
                 x = round(self.pos[0] + x_res * tick_value + self.label_offset_x),
-                y = round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth) # + self.font_size/2.5
-                subfigure.add(subfigure.text('%s' % tick_value,
-                                             insert=(x, y)), )
+                y = round(self.pos[
+                              1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth)  # + self.font_size/2.5
+                tick_coords.append([x, y])
+            title_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font)
+            title_coords = [
+                round(self.pos[0] + (self.dim-1)/2),
+                round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset - self.label_font_size - self.title_font_sizecoinm)
+            ]
 
-            # add the axis title
-            subfigure.add(subfigure.text('%s' % self.title,
-                                         insert=(
-                                             round(self.pos[0] + (self.dim-1)/2),
-                                             round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth - self.title_offset)
-                                         ),
-                                        style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (self.title_font_size, self.title_font),
-                          ), )
-
+        # draw the main axis. Might simply overlap with the figure border
         if self.side =='bottom':
-            subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
-                                               main_figure.dim[1]),
-                                         style="text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top" % self.label_font_size)
+            label_style = "text-anchor:middle;font-size:%spx;font-style:arial;alignment-baseline:top" % self.label_font_size
 
             border_path = "M %s %s L %s %s"%(self.pos[0],
                                              self.pos[1] + self.axis_offset + self.axis_linewidth/2,
                                              self.pos[0] + self.dim,
                                              self.pos[1] + self.axis_offset + self.axis_linewidth/2)
-
-            subfigure.add(subfigure.path(border_path,
-                                         fill="none",
-                                         stroke=rgb(*self.color),
-                                         stroke_width=self.axis_linewidth, shape_rendering='crispEdges'))
-
             # draw the ticks
-            major_tick_path = "M"
             for tick_value in tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
                     self.pos[0] + x_res * tick_value + 1,
@@ -754,29 +748,34 @@ class XAxis(Axis):
                     self.pos[1] + self.major_tick_length + self.axis_offset + self.axis_linewidth)
 
             major_tick_path = major_tick_path[:-2]
-
-            subfigure.add(subfigure.path(major_tick_path,
-                                         fill="none",
-                                         stroke=rgb(*self.color),
-                                         stroke_width=self.major_tick_linewidth, shape_rendering='crispEdges'))
-
+            tick_coords = []
             # label the ticks
             for tick_value in tick_values:
                 x = self.pos[0] + x_res * tick_value + self.label_offset_x
                 y = self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth # + self.font_size/2.5
-                subfigure.add(subfigure.text('%s' % tick_value,
-                                             insert=(x, y)), )
-            # add the axis title
-            subfigure.add(subfigure.text('%s' % self.title,
-                                         insert=(
-                                             round(self.pos[0] + (self.dim-1)/2),
-                                             round(self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth + self.title_offset)
-                                         ),
-                                         style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (
-                                         self.title_font_size, self.title_font),
-                                         ), )
+                tick_coords.append([tick_value, x, y])
 
-        return subfigure
+            title_coords = [
+                round(self.pos[0] + (self.dim - 1) / 2),
+                round(self.pos[
+                          1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth + self.title_offset + self.label_font_size + self.title_font_size)
+            ]
+            title_style = "text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:baseline" % (
+                                         self.title_font_size, self.title_font)
+
+        # now do the drawing
+        # make the subfigure
+
+        kwargs = {
+            'main_figure': main_figure,
+            'label_style': label_style,
+            'border_path': border_path,
+            'major_tick_path': major_tick_path,
+            'tick_coords': tick_coords,
+            'title_coords': title_coords,
+            'title_style': title_style
+        }
+        return self.draw_axis(**kwargs)
 
 
 class Plotxel:
@@ -790,18 +789,18 @@ class Plotxel:
     def add_data(self, name, x, y):
         self.data[name] = [x, y]  # add some data. Drawables are linked to the data
 
-    def add_drawable(self, drawable_name, drawable_type, data_name=None, link_to=None):
+    def add_drawable(self, drawable_name, drawable_type, data_name=None, link_to=None, **kwargs):
         """
         specify a data series name (in self.data), what kind of item, and its name
         """
         if drawable_type == "Scatter":
-            self.drawables[drawable_name] = Scatter(data_name)
+            self.drawables[drawable_name] = Scatter(data_name, kwargs)
 
         elif drawable_type == "YAxis":
-            self.drawables[drawable_name] = YAxis(data_name, link_to)
+            self.drawables[drawable_name] = YAxis(data_name, link_to, kwargs)
 
         elif drawable_type == "XAxis":
-            self.drawables[drawable_name] = XAxis(data_name, link_to)
+            self.drawables[drawable_name] = XAxis(data_name, link_to, kwargs)
         elif drawable_type == 'XHist':
             print("XHist not implemented yet.")
 
@@ -809,10 +808,10 @@ class Plotxel:
             print("YHist not implemented yet.")
 
         elif drawable_type == 'Bar':
-            self.drawables[drawable_name] = Bar(data_name)
+            self.drawables[drawable_name] = Bar(data_name, kwargs)
 
         else:
-            warnings.warn("Could not create a drawable of '%s'. Acceptable inputs are 'Scatter', 'YAxis', 'XAxis', 'YHist', and 'XHist'"%drawable_type, Warning)
+            warnings.warn("Could not create a drawable of '%s'. Acceptable inputs are 'Scatter', 'Bar', 'YAxis', 'XAxis', 'YHist', and 'XHist'"%drawable_type, Warning)
 
         return self.drawables[drawable_name]
 
