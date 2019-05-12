@@ -11,7 +11,7 @@ x.add_data('series2', [1, 2, 3, 4, 5], [1, 2, 3, 4, 5])
 plot1 = x.add_drawable("plot1", "Scatter", "series1")
 plot1.title = 'Analysis of Goose Encounters'
 plot1.pos = [60, 50]
-plot1.title_offset = 28
+plot1.title_offset = 23
 
 # right plot and its position. Same data as plot1
 plot2 = x.add_drawable("plot2", "Scatter", "series1")
@@ -43,9 +43,14 @@ ax1r.setattrs(
     title='Ax1 Right Title'
 )
 
-# or use the constructor!
-ax2 = x.add_drawable("ax2", 'YAxis', link_to="plot2", title_offset=20, side='right', axis_offset=10)
+ax1t = x.add_drawable('ax1t', 'XAxis', link_to='plot1')
+ax1t.setattrs(
+    side='top',
+    title=''
+)
 
+# or use the constructor!
+x.add_drawable("ax2", 'YAxis', link_to="plot2", title_offset=20, side='right', axis_offset=10)
 
 ax3 = x.add_drawable("ax3", 'XAxis', link_to="plot2")
 ax3.setattrs(
@@ -75,7 +80,7 @@ x.add_drawable('ax4', 'YAxis', link_to="bar1", title='Likelihood of Goose Attack
 x.add_drawable('ax5', 'XAxis', link_to='bar1', title='Day of Week', title_offset=5)
 
 # coming soon, Jupyter magic!
-#x.anti_aliasing=False
+# x.anti_aliasing=False
 x.show()
 
 # or for SVG
