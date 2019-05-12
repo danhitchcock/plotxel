@@ -31,8 +31,12 @@ def smart_limits(data):
 
 
 def smart_ticks(data, limits=None):
+    print(data)
+    print(limits)
     if limits is None:
         limits = smart_limits(data)
+    print(data)
+    print(limits)
     # print('Limits are: %s'%limits)
     # Ticks should only be in divisers of 1, 2, 2.5 or 5 and any 10x multiple of those, e.g. 10, 20, 25
     # We will start with ~ 5 ticks, but later adjust for axis size. We will also move this function to be an axis
@@ -45,7 +49,7 @@ def smart_ticks(data, limits=None):
     div_limits = [limit/(10**magnitudes) for limit in limits]
 
     # manual, verbose checking potential limits to see how many ticks we would get
-    potential_ticks = [.1, .2, .25, .5, 1, 2, 25, 50, 100]
+    potential_ticks = [.1, .2, .25, .5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100]
     num_ticks = [floor((div_limits[1]-div_limits[0])/pt) for pt in potential_ticks]
 
 
@@ -89,12 +93,12 @@ def smart_ticks(data, limits=None):
 
 class Chart:
     defaults = {
-        'dim': [300, 150],
-        'xlim': [],
-        'ylim': [],
+        'dim': (300, 150),
+        'xlim': (),
+        'ylim': (),
         'marker_shape': 'circle',
         'marker_size': 10,
-        'pos': [0, 0],
+        'pos': (0, 0),
         'inside_border_width': 1,
         'inside_border': [[1], [1], [1], [1]],
         'inside_border_color': 'black',
@@ -102,13 +106,28 @@ class Chart:
         'title_offset': 10,
         'title_font': 'arial',
         'title_font_size': 20,
+
         'line_width': 1,
-        'line_color': (0, 0, 0)
+        'line_color': (0, 0, 0),
+        'line_style': None,
+
+        'major_ticks': None,
+
+        'vertical_gridlines': False,
+        'vertical_gridline_width': 1,
+        'vertical_gridline_color': (70, 70, 70),
+        'vertical_gridline_style': None,
+
+        'horizontal_gridlines': False,
+        'horizontal_gridline_width': 1,
+        'horizontal_gridline_color': (70, 70, 70),
+        'horizontal_gridline_style': None,
     }
 
-    def __init__(self, data_name):
+    def __init__(self, data_name, name):
 
         defaults = self.defaults
+        self.name = name
         self.type = 'Chart'
         self.data_name = data_name  # the data we link our chart to
 
@@ -138,7 +157,21 @@ class Chart:
         self.line_width = defaults['line_width']
         self.line_color = defaults['line_color']
 
+
+        self.major_ticks = defaults['major_ticks']
+        # gridline stuff
+        self.vertical_gridlines = defaults['vertical_gridlines']
+        self.vertical_gridline_width = defaults['vertical_gridline_width']
+        self.vertical_gridline_color = defaults['vertical_gridline_color']
+        self.vertical_gridline_style = defaults['vertical_gridline_style']
+
+        self.horizontal_gridlines = defaults['horizontal_gridlines']
+        self.horizontal_gridline_width = defaults['horizontal_gridline_width']
+        self.horizontal_gridline_color = defaults['horizontal_gridline_color']
+        self.horizontal_gridline_style = defaults['horizontal_gridline_style']
+
     def get_x_res(self):
+        print("X resolution: ", (self.dim[0]) / (self.xlim[1] - self.xlim[0]))
         return (self.dim[0]-1) / (self.xlim[1] - self.xlim[0])
 
     def get_y_res(self):
@@ -147,6 +180,7 @@ class Chart:
     def setattrs(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
 
     def draw_border(self):
         if self.inside_border is not None and (type(self.inside_border) == list or type(self.inside_border) == set):
@@ -205,9 +239,69 @@ class Chart:
                                      style="text-anchor:middle;font-size:%spx;font-style:%s;alignment-baseline:bottom"%(self.title_font_size, self.title_font))
 
 
+    def draw_gridlines(self, main_figure):
+
+        # Draw a gridline
+        #
+        # first, are major ticks defined for the chart?
+        # if they are
+        #  draw the grid line accordingly
+        # else
+        #  find any linked axes
+        #  If any have have major ticks defined
+        #    use those
+        #  else
+        #    Everything is using smart ticks
+
+        data = main_figure.data[self.data_name]
+        Y_major_ticks = None
+        X_major_ticks = None
+
+        if self.major_ticks is not None:
+            pass
+        else:
+            for drawable in main_figure.drawables:
+                if main_figure.drawables[drawable].subtype == 'y':
+                    if main_figure.drawables[drawable].link_to == self.name:
+                        Y_major_ticks = main_figure.drawables[drawable].get_tick_positions(main_figure)
+                        break
+
+            for drawable in main_figure.drawables:
+                print(main_figure.drawables[drawable].subtype)
+                if main_figure.drawables[drawable].subtype == 'x':
+                    if main_figure.drawables[drawable].link_to == self.name:
+                        X_major_ticks = main_figure.drawables[drawable].get_tick_positions(main_figure)
+                        break
+
+        print('Determined the ticks.')
+        print(Y_major_ticks)
+        print(X_major_ticks)
+
+        X_path = 'M'
+
+        for major_tick_value in X_major_ticks:
+            print(major_tick_value)
+            X_path += " %s %s L %s %s M" % (
+                round(major_tick_value) + 1,
+                0,
+                round(major_tick_value) + 1,
+                self.dim[1])
+        print(X_path)
+
+        X_path = X_path[:-2]
+
+        return svgwrite.path.Path(
+            X_path,
+            fill="none",
+            stroke=rgb(*self.vertical_gridline_color),
+            stroke_width=self.vertical_gridline_width,
+            shape_rendering='crispEdges'
+        )
+
+
 class Scatter(Chart):
-    def __init__(self, data_name, kwargs={}):
-        super().__init__(data_name)
+    def __init__(self, data_name, name, kwargs={}):
+        super().__init__(data_name, name)
         self.subtype = 'Scatter'
         self.setattrs(**kwargs)
 
@@ -242,6 +336,10 @@ class Scatter(Chart):
             size=(self.dim[0], self.dim[1]),
             x=self.pos[0], y=self.pos[1])
 
+
+        # draw the gridlines from the parent Chart class
+        chart_area.add(self.draw_gridlines(main_figure))
+
         # each circle's position is calculated based on the chart size and it's data values
         # the points are plotted relative to our chart_area, which is then affixed to the main figure
         # x is plotted left to right. We calculate it by determining X's value relative to the chart minimum, then
@@ -250,8 +348,8 @@ class Scatter(Chart):
         # to get its proper position
         # future support: square, asterisk, dash, plus, custom svg
 
-        data_coordinates = []
 
+        data_coordinates = []
         for x, y in zip(x_data, y_data):
             # add coordinates
             data_coordinates.append(
@@ -274,9 +372,9 @@ class Scatter(Chart):
                                 stroke=rgb(self.line_color[0], self.line_color[1], self.line_color[2]),
                                 stroke_width=self.line_width))
 
+
         # draw our makers
         if self.marker_size > 0:
-
             for center in data_coordinates:
                 if self.marker_shape == 'circle':
                     chart_area.add(
@@ -374,8 +472,8 @@ class Scatter(Chart):
 
 class Bar(Chart):
 
-    def __init__(self, data_name, kwargs={}):
-        super().__init__(data_name)
+    def __init__(self, data_name, name, kwargs={}):
+        super().__init__(data_name, name)
         self.subtype = 'Bar'
         self.style = 'grouped'
         self.group_spacing = 5
@@ -456,7 +554,7 @@ class Axis:
     defaults = {
         'dim': 0,
         'pos': [],  # [x, y] svg pixel coordinates of bottom left of chart
-        'lim': [],  # [min, max] limits of our axis
+        'lim': None,  # [min, max] limits of our axis
         'color': (0, 0, 0),  # color of our axis line
 
         'axis_offset': 0,
@@ -466,7 +564,7 @@ class Axis:
         'major_tick_linewidth': 1,
         'major_tick_length': 5,
         'major_tick_color': (0, 0, 0),
-        'major_ticks': [],
+        'major_ticks': None,
         'major_tick_font': 'arial',
 
         'minor_tick_linewidth': 1,
@@ -483,8 +581,9 @@ class Axis:
         'title_font': 'arial'
     }
 
-    def __init__(self, data_name, link_to):
+    def __init__(self, data_name, name, link_to):
         defaults = self.defaults
+        self.name = name
         self.type = 'Axis'
         self.data_name = data_name
         self.link_to = link_to
@@ -551,16 +650,18 @@ class Axis:
 
 
 class YAxis(Axis):
-    def __init__(self, data_name=None, link_to=None, kwargs={}):
-        super().__init__(data_name, link_to)
+    def __init__(self, data_name=None, name=None, link_to=None, kwargs={}):
+        super().__init__(data_name, name, link_to)
         self.subtype = 'y'
         self.associated_drawable = ''
         self.side = 'left'
-
         self.setattrs(**kwargs)
 
-    def get_y_res(self):
-        return (self.dim - 1) / (self.lim[1] - self.lim[0])
+    def get_y_res(self, main_figure):
+        if self.lim is None:
+            return main_figure.drawables[self.link_to].get_x_res()
+
+        return (self.dim-1) / (self.lim[1] - self.lim[0])
 
     def draw(self, main_figure=None):
         # grab any linked plot values
@@ -581,11 +682,12 @@ class YAxis(Axis):
                 self.dim = main_figure.drawables[self.link_to].dim[1]
 
         data = main_figure.data[self.data_name][1]
+
         if not self.major_tick_values:
             major_tick_values = smart_ticks(data, self.lim)
 
-
-        y_res = self.get_y_res()
+        # this may defer to the linked chart, so we need to pass main_figure
+        y_res = self.get_y_res(main_figure)
 
         # start the svg path for the major tick
         major_tick_path = "M"
@@ -603,10 +705,10 @@ class YAxis(Axis):
 
             for major_tick_value in major_tick_values:
                 major_tick_path += " %s %s L %s %s M"%(
-                    self.pos[0] - self.axis_offset,
-                    self.pos[1] + self.dim - y_res * major_tick_value,
-                    self.pos[0] - self.major_tick_length - self.axis_offset - self.axis_linewidth,
-                    self.pos[1] + self.dim - y_res * major_tick_value)
+                    round(self.pos[0] - self.axis_offset),
+                    round(self.pos[1] + self.dim - y_res * major_tick_value),
+                    round(self.pos[0] - self.major_tick_length - self.axis_offset - self.axis_linewidth),
+                    round(self.pos[1] + self.dim - y_res * major_tick_value))
 
                 x = self.pos[0] - self.major_tick_length - self.label_offset_x - self.axis_offset - self.axis_linewidth
                 y = self.pos[1] + self.dim - y_res * major_tick_value + self.label_offset_y
@@ -634,11 +736,12 @@ class YAxis(Axis):
                 self.pos[1] + self.dim)
 
             for major_tick_value in major_tick_values:
-                major_tick_path += " %s %s L %s %s M"%(
-                    self.pos[0] + self.axis_offset + linked_chart.dim[0],
-                    self.pos[1] + self.dim - y_res * major_tick_value,
-                    self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.major_tick_length + self.axis_linewidth/2,
-                    self.pos[1] + self.dim - y_res * major_tick_value)
+                major_tick_path += " %s %s L %s %s M" % (
+                    round(self.pos[0] + self.axis_offset + linked_chart.dim[0]),
+                    round(self.pos[1] + self.dim - y_res * major_tick_value),
+                    round(self.pos[0] + self.axis_offset + linked_chart.dim[0] + self.major_tick_length + self.axis_linewidth/2),
+                    round(self.pos[1] + self.dim - y_res * major_tick_value)
+                )
 
                 x = self.pos[0] + self.major_tick_length + self.label_offset_x + self.axis_offset + \
                     linked_chart.dim[0] + self.axis_linewidth
@@ -662,21 +765,43 @@ class YAxis(Axis):
             'title_style': title_style,
             'title_transform': title_transform
         }
+
         return self.draw_axis(**kwargs)
 
     def set_defaults(self, data):
         pass
 
+    def get_tick_positions(self, main_figure):
+        data = main_figure.data[self.data_name][1]
+        # if self.lim is not defined, pull the limits from the main figure
+        # if it's also None, then the smart_ticks will just do its thing
+        if self.lim is None:
+            lim = main_figure.drawables[self.link_to].ylim
+        else:
+            lim = self.lim
+        if self.major_tick_values is None:
+            major_tick_values = smart_ticks(data, lim)
+        else:
+            major_tick_values = self.major_tick_values
+        y_res = self.get_y_res(main_figure)
+        return [major_tick_value * y_res for major_tick_value in major_tick_values]
+
 
 class XAxis(Axis):
-    def __init__(self, data_name=None, link_to=None, kwargs={}):
-        super().__init__(data_name, link_to)
+    def __init__(self, data_name=None, name=None, link_to=None, kwargs={}):
+        super().__init__(data_name, name, link_to)
         self.subtype = 'x'
         self.associated_drawable = ''
         self.side = 'bottom'
         self.setattrs(**kwargs)
-    def get_x_res(self):
-        return (self.dim - 1) / (self.lim[1] - self.lim[0])
+
+
+    def get_x_res(self, main_figure):
+        # if the axis limits or dimensions were never specified, pull from its linked chart
+        if self.lim is None:
+            return main_figure.drawables[self.link_to].get_x_res()
+        return (self.dim-1) / (self.lim[1] - self.lim[0])
+
 
     def draw(self, main_figure):
         # write a function to grabbed any linked plot values
@@ -705,7 +830,7 @@ class XAxis(Axis):
         # tick_positions - x coordinates for the tick
         if main_figure.drawables[self.link_to].subtype == 'Scatter':
             data = main_figure.data[self.data_name][0]
-            x_res = self.get_x_res()
+            x_res = self.get_x_res(main_figure)
             tick_values = smart_ticks(data, self.lim)
             tick_positions = [x_res * tick_value for tick_value in tick_values]
 
@@ -741,6 +866,7 @@ class XAxis(Axis):
                     round(self.pos[1] - chart_height - self.axis_offset),
                     round(self.pos[0] + tick_position + 1),
                     round(self.pos[1] - chart_height - self.major_tick_length - self.axis_offset - self.axis_linewidth))
+
                 x = round(self.pos[0] + tick_position + self.label_offset_x)
                 y = round(self.pos[
                               1] - chart_height - self.major_tick_length - self.axis_offset - self.label_offset_y - self.axis_linewidth)  # + self.font_size/2.5
@@ -764,12 +890,13 @@ class XAxis(Axis):
             # draw the ticks
             for tick_value, tick_position in zip(tick_values, tick_positions):
                 major_tick_path += " %s %s L %s %s M"%(
-                    self.pos[0] + tick_position + 1,
-                    self.pos[1] + self.axis_offset,# + self.axis_linewidth/2,
-                    self.pos[0] + tick_position + 1,
-                    self.pos[1] + self.major_tick_length + self.axis_offset + self.axis_linewidth)
-                x = self.pos[0] + tick_position + self.label_offset_x
-                y = self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth
+                    round(self.pos[0] + tick_position) + 1,
+                    round(self.pos[1] + self.axis_offset),
+                    round(self.pos[0] + tick_position) + 1,
+                    round(self.pos[1] + self.major_tick_length + self.axis_offset + self.axis_linewidth)
+                )
+                x = round(self.pos[0] + tick_position + self.label_offset_x)
+                y = round(self.pos[1] + self.major_tick_length + self.axis_offset + self.label_offset_y + self.axis_linewidth)
                 tick_coords.append([tick_value, x, y])
 
             major_tick_path = major_tick_path[:-2]
@@ -796,6 +923,22 @@ class XAxis(Axis):
         return self.draw_axis(**kwargs)
 
 
+    def get_tick_positions(self, main_figure):
+        data = main_figure.data[self.data_name][0]
+        # if self.lim is not defined, pull the limits from the main figure
+        # if it's also None, then the smart_ticks will just do its thing
+        if self.lim is None:
+            lim = main_figure.drawables[self.link_to].xlim
+        else:
+            lim = self.lim
+        if self.major_tick_values is None:
+            major_tick_values = smart_ticks(data, lim)
+        else:
+            major_tick_values = self.major_tick_values
+        x_res = self.get_x_res(main_figure)
+        return [major_tick_value * x_res for major_tick_value in major_tick_values]
+
+
 class Plotxel:
     def __init__(self, dim):
         self.dim = dim  # list, dimensions, in pixels, [width, height]
@@ -812,13 +955,18 @@ class Plotxel:
         specify a data series name (in self.data), what kind of item, and its name
         """
         if drawable_type == "Scatter":
-            self.drawables[drawable_name] = Scatter(data_name, kwargs)
+            self.drawables[drawable_name] = Scatter(data_name, drawable_name, kwargs)
 
         elif drawable_type == "YAxis":
-            self.drawables[drawable_name] = YAxis(data_name, link_to, kwargs)
+            if data_name is None:
+                data_name = self.drawables[link_to].data_name
+            self.drawables[drawable_name] = YAxis(data_name, drawable_name, link_to, kwargs)
 
         elif drawable_type == "XAxis":
-            self.drawables[drawable_name] = XAxis(data_name, link_to, kwargs)
+            if data_name is None:
+                data_name = self.drawables[link_to].data_name
+            self.drawables[drawable_name] = XAxis(data_name, drawable_name, link_to, kwargs)
+
         elif drawable_type == 'XHist':
             print("XHist not implemented yet.")
 
@@ -826,7 +974,7 @@ class Plotxel:
             print("YHist not implemented yet.")
 
         elif drawable_type == 'Bar':
-            self.drawables[drawable_name] = Bar(data_name, kwargs)
+            self.drawables[drawable_name] = Bar(data_name, drawable_name, kwargs)
 
         else:
             warnings.warn("Could not create a drawable of '%s'. Acceptable inputs are 'Scatter', 'Bar', 'YAxis', 'XAxis', 'YHist', and 'XHist'"%drawable_type, Warning)

@@ -12,6 +12,7 @@ class TestSmartTicks(unittest.TestCase):
 
     def test_non_number(self):
         data = ['howdy!', 1, 2, 3, 4]
+        # assert raise
         pass
 
     def test_non_iterable(self):
