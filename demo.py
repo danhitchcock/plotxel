@@ -87,7 +87,7 @@ x.show()
 # svg_html = x.draw()
 
 # or for image  in BytesIO / save to filename
-x.render(filename='example2.png')
+# x.render(filename='example2.png')
 
 
 #x.show()
