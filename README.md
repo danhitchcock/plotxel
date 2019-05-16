@@ -15,28 +15,32 @@ It's wordy, slow, and unnecessary 99% of the time. But that 1%, you'll be glad y
 ```python
 from plotxel import Plotxel, Axis
 
-x = Plotxel((800, 500))  # our main drawing canvas in x, y
+x = Plotxel()  # our main drawing canvas in x, y
 
 # add some data as a series. The series name, the x data, and y data
 series1 = [i for i in range(10)]
 x.add_data('series1', series1, series1)
-x.add_data('series2', [1, 2, 3, 4, 5], [1, 2, 3, 4, 5])
+x.add_data('series2', [1, 2, 3, 4, 5, 10], [5, 2, 1, 4, 3, 10])
+x.add_data('series3', [10, 5, 4, 3, 2, 1], [5, 2, 1, 4, 3, 10])
 
 # left plot -- its name, type, and data it's linked to
-plot1 = x.add_drawable("plot1", "Scatter", "series1")
+plot1 = x.add_drawable("plot1", "Scatter", ["series1", 'series2', 'series3'])
 plot1.title = 'Analysis of Goose Encounters'
 plot1.pos = [60, 50]
 plot1.title_offset = 23
+plot1.marker_opacity = {.5}  # this must be a set so it can iterate through data. Will make this more intuitive
 
 # right plot and its position. Same data as plot1
 plot2 = x.add_drawable("plot2", "Scatter", "series1")
 # set a bunch of attributes at once!
 plot2.setattrs(
+    ylim=[-1, 10],
+    xlim=[-1, 10],
     pos=[450, 50],
     marker_shape='square',
     marker_fill_color=(255, 0, 0),
     title='Analysis of Goose Encounters (red)',
-    line_width=0
+    line_width = 0
 )
 
 # add some axes, and link them to our plots. It will copy the size, position, scale, and limits of whichever plot it is linked to
@@ -79,20 +83,25 @@ ax3.setattrs(
 Axis.defaults['color'] = (0, 0, 255)
 
 # let's add some bar chart data. Since it's a vertical bar chart, we will pull Y data
+# the labels aren't implemented quite yet
 x.add_data('bar_data', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], [1, 9, 4, 5, 3, 6, 2])
+x.add_data('bar_data2', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], [1, 7, 4, 3, 4, 5, 1])
+x.add_data('bar_data3', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], [-3, 14, 2, 1, 2, 7, 9])
 
-plot3 = x.add_drawable('bar1', 'Bar', 'bar_data')
+plot3 = x.add_drawable('bar1', 'Bar', ['bar_data', 'bar_data2', 'bar_data3'])
 # or unpack a dict
 plot3_attrs = {
     'pos': (150, 300),
     'dim': (500, 150),
-    'ylim': [0, 10],
-    'title': 'Safely Nagivating Geese'
+    'ylim': [-5, 15],
+    'group_spacing': 30,
+    'bar_spacing': 0,
+    'title': 'Safely Navigating Geese'
 }
 plot3.setattrs(**plot3_attrs)
 
 x.add_drawable('ax4', 'YAxis', link_to="bar1", title='Likelihood of Goose Attack', title_offset=25)
-x.add_drawable('ax5', 'XAxis', link_to='bar1', title='Day of Week', title_offset=5)
+# x.add_drawable('ax5', 'XAxis', link_to='bar1', title='Day of Week', title_offset=5)
 
 # coming soon, Jupyter magic!
 # x.anti_aliasing=False
@@ -103,9 +112,6 @@ x.show()
 
 # or for image  in BytesIO / save to filename
 # x.render(filename='example2.png')
-
-
-#x.show()
 ```
     
 
