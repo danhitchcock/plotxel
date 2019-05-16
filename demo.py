@@ -5,13 +5,13 @@ x = Plotxel()  # our main drawing canvas in x, y
 # add some data as a series. The series name, the x data, and y data
 series1 = [i for i in range(10)]
 x.add_data('series1', series1, series1)
-x.add_data('series2', [1, 2, 3, 4, 5, 10], [5, 2, 1, 4, 3, 10])
+x.add_data('series2', [1, 2, 3, 4, 5, 1], [5, 2, 1, 4, 3, 10])
 x.add_data('series3', [10, 5, 4, 3, 2, 1], [5, 2, 1, 4, 3, 10])
 
 # left plot -- its name, type, and data it's linked to
-plot1 = x.add_drawable("plot1", "Scatter", ["series1", 'series2', 'series3'])
+plot1 = x.add_drawable("plot1", "Scatter", ['series1', 'series2', 'series3'])
 plot1.title = 'Analysis of Goose Encounters'
-plot1.pos = [60, 50]
+plot1.pos = (60, 50)
 plot1.title_offset = 23
 plot1.marker_opacity = {.5}  # this must be a set so it can iterate through data. Will make this more intuitive
 
@@ -21,7 +21,7 @@ plot2 = x.add_drawable("plot2", "Scatter", "series1")
 plot2.setattrs(
     ylim=[-1, 10],
     xlim=[-1, 10],
-    pos=[450, 50],
+    pos=(450, 50),
     marker_shape='square',
     marker_fill_color=(255, 0, 0),
     title='Analysis of Goose Encounters (red)',
@@ -32,26 +32,29 @@ plot2.setattrs(
 # add some axes, and link them to our plots. It will copy the size, position, scale, and limits of whichever plot it is linked to
 ax1 = x.add_drawable("ax1", 'YAxis', link_to="plot1")
 ax1.axis_offset = 10
+ax1.round = 2
 ax1.title_offset = 25  # distance from the ticks. Will have an auto feature in the future!
 ax1.title = "Near Death Experiences With Geese"
 
 # all other axes, let's put them flush with the graph by changing the default
 # defaults are copied at the time the object is initialized, so this won't affect ax1
 Axis.defaults['axis_offset'] = -1
-ax1b = x.add_drawable('ax1b', 'XAxis', link_to='plot1')
+ax1b = x.add_drawable('ax1b', 'XAxis', link_to='plot1', round=2)
 
 # you can keep setting attributes in bulk
 ax1r = x.add_drawable('ax1r', 'YAxis', link_to='plot1', title_offset=20)
 ax1r.setattrs(
     side='right',
     title_offset=20,
-    title='Ax1 Right Title'
+    title='Ax1 Right Title',
+    round=2
 )
 
 ax1t = x.add_drawable('ax1t', 'XAxis', link_to='plot1')
 ax1t.setattrs(
     side='top',
-    title=''
+    title='',
+    round=2
 )
 
 # or use the constructor!
@@ -85,7 +88,7 @@ plot3_attrs = {
     'title': 'Safely Navigating Geese'
 }
 plot3.setattrs(**plot3_attrs)
-
+x.add_drawable('hist', 'YHist', link_to='bar1', num_bins=20)
 x.add_drawable('ax4', 'YAxis', link_to="bar1", title='Likelihood of Goose Attack', title_offset=25)
 # x.add_drawable('ax5', 'XAxis', link_to='bar1', title='Day of Week', title_offset=5)
 

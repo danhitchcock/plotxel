@@ -397,7 +397,6 @@ class Scatter(Chart):
             y_data = main_figure.data[data_name][1]
 
             data_coordinates = []
-            print('marker_size', marker_size)
             for x, y in zip(x_data, y_data):
                 # add coordinates
                 data_coordinates.append(
@@ -566,7 +565,6 @@ class Bar(Chart):
 
         bar_y_coords =[list(x) for x in zip(*bar_y_coords)]
         heights = [list(x) for x in zip(*heights)]
-        print(heights)
         # now the exciting part -- let's draw some rectangles!!
         for x_coords, y_coords, widths, heights in zip(group_x_coords, bar_y_coords, bar_widths, heights):
             for x_coord, y_coord, width, height, bar_fill_color, bar_line_color, bar_line_width in zip(x_coords, y_coords, widths, heights, cycle(self.bar_fill_color), cycle(self.bar_line_color), cycle(self.bar_line_width)):
@@ -590,7 +588,6 @@ class Bar(Chart):
 
     def get_x_coords(self, group_widths,  bar_widths):
         bar_x_coords = []
-        print(bar_widths)
         # first calculate relatve group positionings
         for group in bar_widths:
             temp = [0]

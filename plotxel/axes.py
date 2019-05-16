@@ -25,6 +25,7 @@ class Axis:
         'minor_tick_color': (0, 0, 0),
 
         'labels': [],  # labels for our major ticks
+        'round': None,
         'label_font_size': 10,  # font size of the axis labels
         'label_offset_x': 0,  # how far away the axis labels are away from the end of the ticks, y axis.
         'label_offset_y': 0,  # how far away the axis labels are away from the end of the ticks, x axis.
@@ -63,6 +64,7 @@ class Axis:
         self.label_font_size = defaults['label_font_size']  # font size of the axis labels
         self.label_offset_x = defaults['label_offset_x']  # how far away the axis labels are away from the end of the ticks, y axis.
         self.label_offset_y = defaults['label_offset_y']  # how far away the axis labels are away from the end of the ticks, x axis.
+        self.round = defaults['round']
 
         self.title = defaults['title']
         self.title_font_size = defaults['title_font_size']
@@ -93,8 +95,10 @@ class Axis:
         if self.major_tick_labels:
             tick_labels = [tick_label for (tick_coord, tick_label) in zip(tick_coords, cycle(self.major_tick_labels))]
         else:
-            tick_labels = [tick_coord[0] for tick_coord in tick_coords]
-
+            if self.round is None:
+                tick_labels = [tick_coord[0] for tick_coord in tick_coords]
+            else:
+                tick_labels = ['%.*f'%(self.round, tick_coord[0]) for tick_coord in tick_coords]
         for coord, label in zip(tick_coords, tick_labels):
             subfigure.add(subfigure.text('%s' % label,
                                          insert=(coord[1]+1, coord[2])),)
@@ -140,7 +144,6 @@ class YAxis(Axis):
                 self.dim = main_figure.drawables[self.link_to].dim[1]
 
         # find min and max of main figure data. These could be in multiple datasets
-        print(self.link_to)
         data = linked_chart.get_y_range(main_figure)
 
         # data_min = min([min(main_figure.data[key][1]) for key in main_figure.drawables[self.link_to].data_name])
@@ -471,9 +474,10 @@ class YHist(Axis):
         subfigure = svgwrite.Drawing(size=(main_figure.dim[0],
                                            main_figure.dim[1]),
                                      )
-        top_left = linked_chart.pos
-        top_left[0] = top_left[0] + linked_chart.dim[0] + self.offset
-        top_left[1] = top_left[1]+1
+        top_left = [None, None]
+
+        top_left[0] = linked_chart.pos[0] + linked_chart.dim[0] + self.offset
+        top_left[1] = linked_chart.pos[1] + 1
 
         # draw the outline
         if self.inside_border_width:
