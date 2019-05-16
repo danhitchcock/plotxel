@@ -8,7 +8,7 @@ import warnings
 from io import BytesIO
 from .charts import Scatter, Bar, Chart
 from .axes import YAxis, XAxis, Axis, YHist
-__version__ = "0.0.8"
+__version__ = "0.0.9"
 
 class Plotxel:
     defaults = {
