@@ -25,7 +25,8 @@ plot2.setattrs(
     marker_shape='square',
     marker_fill_color=(255, 0, 0),
     title='Analysis of Goose Encounters (red)',
-    line_width = 0
+    line_width=0,
+
 )
 
 # add some axes, and link them to our plots. It will copy the size, position, scale, and limits of whichever plot it is linked to

@@ -128,8 +128,10 @@ class Chart:
     def setattrs(self, **kwargs):
         for k, v in kwargs.items():
             if k in self.series_attributes:
-                if type(k) is not list:
+                if type(v) is not list:
                     setattr(self, k, [v])
+                else:
+                    setattr(self, k, v)
             else:
                 setattr(self, k, v)
 
@@ -360,7 +362,7 @@ class Scatter(Chart):
         # determine how many pixels/value in our chart
         x_res = self.get_x_res(x_range)
         y_res = self.get_y_res(y_range)
-        print(y_res)
+
         # establish our chart drawing area, such that the points are truncated if they fall outside the range
         # our chart points and circles will be added in here
         chart_area = svgwrite.Drawing(
@@ -378,6 +380,7 @@ class Scatter(Chart):
         # y is plotted top to bottom, so same thing except we subtract the calculated value by the figure size
         # to get its proper position
         # future support: square, asterisk, dash, plus, custom svg
+
         for data_name, line_color, line_width, marker_size, marker_shape, marker_fill_color, marker_border_color, marker_border_width, marker_opacity  in zip(
             self.data_name,
             cycle(self.line_color),
@@ -394,7 +397,7 @@ class Scatter(Chart):
             y_data = main_figure.data[data_name][1]
 
             data_coordinates = []
-            print('marker_opacity', marker_opacity)
+            print('marker_size', marker_size)
             for x, y in zip(x_data, y_data):
                 # add coordinates
                 data_coordinates.append(
