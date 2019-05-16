@@ -22,12 +22,8 @@ def smart_limits(data):
 
 
 def smart_ticks(data, limits=None):
-    print(data)
-    print(limits)
     if limits is None:
         limits = smart_limits(data)
-    print(data)
-    print(limits)
     # print('Limits are: %s'%limits)
     # Ticks should only be in divisers of 1, 2, 2.5 or 5 and any 10x multiple of those, e.g. 10, 20, 25
     # We will start with ~ 5 ticks, but later adjust for axis size. We will also move this function to be an axis
@@ -46,10 +42,11 @@ def smart_ticks(data, limits=None):
 
     for i, num_tick in enumerate(num_ticks):
         # even though it says 3 to 5 allowed ticks, it could actually be actually 4 to 8
-        if (num_tick >= 4) & (num_tick <= 6):
+        if (num_tick >= 4) & (num_tick <= 7):
             tick = potential_ticks[i]
             break
-
+    else:
+        print(limits, data, num_ticks)
     # print("Tick value: %s %s times"%(tick*10**magnitudes, num_tick))
     # next, find the minimum tick value that matches out convention of allowable tick numbers
     tick = tick*10**magnitudes
@@ -65,9 +62,6 @@ def smart_ticks(data, limits=None):
     if first_tick < limits[0]:
 
         first_tick += tick
-
-    #print('first tick is as such: ', limits, first_tick)
-    #propogate our ticks from there
     ticks = [first_tick]
     max_tick = first_tick
 

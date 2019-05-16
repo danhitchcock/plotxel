@@ -7,14 +7,19 @@ from collections import OrderedDict
 import warnings
 from io import BytesIO
 from .charts import Scatter, Bar, Chart
-from .axes import YAxis, XAxis, Axis
-import cairosvg
-__version__ = "0.0.6"
-
+from .axes import YAxis, XAxis, Axis, YHist
+__version__ = "0.0.7"
 
 class Plotxel:
-    def __init__(self, dim):
-        self.dim = dim  # list, dimensions, in pixels, [width, height]
+    defaults = {
+        "dim": (800, 500)
+    }
+
+    def __init__(self, dim=None):
+        if dim is None:
+            self.dim = self.defaults['dim']
+        else:
+            self.dim = dim  # list, dimensions, in pixels, [width, height]
         self.data = {}  # dictionary to store all data values. will be referenced by data name
         self.drawables = OrderedDict()  # keep track of the drawable items (charts, axes) in the figure. each drawable has a name
         self.background_color = rgb(255, 255, 255)
@@ -23,31 +28,27 @@ class Plotxel:
     def add_data(self, name, x, y):
         self.data[name] = [x, y]  # add some data. Drawables are linked to the data
 
-    def add_drawable(self, drawable_name, drawable_type, data_name=None, link_to=None, **kwargs):
+    def add_drawable(self, drawable_name, drawable_type, data_or_link=None, **kwargs):
         """
         specify a data series name (in self.data), what kind of item, and its name
         """
         if drawable_type == "Scatter":
-            self.drawables[drawable_name] = Scatter(data_name, drawable_name, kwargs)
+            self.drawables[drawable_name] = Scatter(drawable_name, data_or_link, kwargs)
 
         elif drawable_type == "YAxis":
-            if data_name is None:
-                data_name = self.drawables[link_to].data_name
-            self.drawables[drawable_name] = YAxis(data_name, drawable_name, link_to, kwargs)
+            self.drawables[drawable_name] = YAxis(drawable_name, data_or_link, kwargs)
 
         elif drawable_type == "XAxis":
-            if data_name is None:
-                data_name = self.drawables[link_to].data_name
-            self.drawables[drawable_name] = XAxis(data_name, drawable_name, link_to, kwargs)
+            self.drawables[drawable_name] = XAxis(drawable_name, data_or_link, kwargs)
 
         elif drawable_type == 'XHist':
             print("XHist not implemented yet.")
 
         elif drawable_type == 'YHist':
-            print("YHist not implemented yet.")
+            self.drawables[drawable_name] = YHist(drawable_name, data_or_link, kwargs)
 
         elif drawable_type == 'Bar':
-            self.drawables[drawable_name] = Bar(data_name, drawable_name, kwargs)
+            self.drawables[drawable_name] = Bar(drawable_name, data_or_link, kwargs)
 
         else:
             warnings.warn("Could not create a drawable of '%s'. Acceptable inputs are 'Scatter', 'Bar', 'YAxis', 'XAxis', 'YHist', and 'XHist'"%drawable_type, Warning)

@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
-from plotxel import smart_ticks, smart_limits
+import plotxel
+from plotxel.helpers import smart_ticks, smart_limits
+
 
 
 class TestSmartTicks(unittest.TestCase):
@@ -33,8 +35,15 @@ class TestSmartTicks(unittest.TestCase):
             temp_length = len(smart_ticks(data))
             lengths.append(temp_length)
         print(min(lengths), max(lengths))
-        self.assertTrue(min(lengths) >= 4 and max(lengths) <= 8)
+        self.assertTrue(min(lengths) >= 4 and max(lengths) <= 9)
 
+
+class TestDefaultScatter(unittest.TestCase):
+    def test_defaults(self):
+        a = plotxel.Plotxel()
+        a.add_data('series1', [0, 1, 2, 3], [0, 1, 2, 3])
+        a.add_drawable('scatter1', 'Scatter', 'series1')
+        a.show()
 
 #class TestSmartLimits(unittest.TestCase):
 #    def test_negative(self):
